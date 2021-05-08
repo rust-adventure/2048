@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_easings::*;
 use itertools::Itertools;
 
 const TILE_SPACER: f32 = 10.0;
@@ -31,6 +32,7 @@ fn main() {
         )))
         .add_startup_system(setup.system())
         .add_plugins(DefaultPlugins)
+        .add_plugin(bevy_easings::EasingsPlugin)
         .add_startup_stage(
             "game_setup",
             SystemStage::single(spawn_board.system()),
@@ -222,7 +224,12 @@ fn block_pos_to_transform(
 fn render_blocks(
     mut commands: Commands,
     mut blocks: Query<
-        (&mut Transform, &Position),
+        (
+            Entity,
+            &mut Transform,
+            &Position,
+            Changed<Position>,
+        ),
         With<Block>,
     >,
     query_board: Query<&Board>,
@@ -230,15 +237,36 @@ fn render_blocks(
     let board = query_board
         .single()
         .expect("expect there to be a board");
-    for (mut transform, pos) in blocks.iter_mut() {
-        transform.translation.x = block_pos_to_transform(
-            board.size.into(),
-            pos.x.into(),
-        );
-        transform.translation.y = block_pos_to_transform(
-            board.size.into(),
-            pos.y.into(),
-        );
+    for (entity, mut transform, pos, pos_changed) in
+        blocks.iter_mut()
+    {
+        if pos_changed {
+            let x = block_pos_to_transform(
+                board.size.into(),
+                pos.x.into(),
+            );
+            let y = block_pos_to_transform(
+                board.size.into(),
+                pos.y.into(),
+            );
+            let mut ent = commands.entity(entity);
+            ent.insert(transform.ease_to(
+                Transform::from_xyz(
+                    x,
+                    y,
+                    transform.translation.z,
+                ),
+                EaseFunction::QuadraticInOut,
+                EasingType::Once {
+                    duration:
+                        std::time::Duration::from_millis(
+                            100,
+                        ),
+                },
+            ));
+            // transform.translation.x = x;
+            // transform.translation.y = y;
+        }
     }
 }
 
