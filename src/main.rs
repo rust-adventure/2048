@@ -1,9 +1,16 @@
 use bevy::prelude::*;
 use bevy_easings::*;
 use itertools::Itertools;
+use rand::{thread_rng, Rng};
+
+mod buttons;
+
+use buttons::*;
 
 const TILE_SPACER: f32 = 10.0;
 const TILE_SIZE: f32 = 40.0;
+
+#[derive(PartialEq, Eq)]
 struct Position {
     x: u8,
     y: u8,
@@ -16,6 +23,7 @@ struct BlockText;
 struct Board {
     size: u8,
 }
+struct NewTileEvent;
 struct Materials {
     board: Handle<ColorMaterial>,
     tile_placeholder: Handle<ColorMaterial>,
@@ -31,6 +39,7 @@ fn main() {
             0.04, 0.04, 0.1,
         )))
         .add_startup_system(setup.system())
+        .add_startup_system(setup_ui.system())
         .add_plugins(DefaultPlugins)
         .add_plugin(bevy_easings::EasingsPlugin)
         .add_startup_stage(
@@ -43,6 +52,10 @@ fn main() {
         )
         .add_system(board_shift.system())
         .add_system(render_blocks.system())
+        .add_system(new_tile_handler.system())
+        .add_event::<NewTileEvent>()
+        .init_resource::<ButtonMaterials>()
+        .add_system(button_system.system())
         .run();
 }
 
@@ -52,6 +65,7 @@ fn setup(
 ) {
     commands
         .spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(UiCameraBundle::default());
 
     commands.insert_resource(Materials {
         board: materials
@@ -61,8 +75,83 @@ fn setup(
         block: materials
             .add(Color::rgb(0.9, 0.9, 1.0).into()),
     });
+   
 }
 
+fn setup_ui(  
+    mut commands: Commands,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
+    button_materials: Res<ButtonMaterials>
+) {
+    commands
+    .spawn_bundle(NodeBundle {
+        style: Style {
+            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::FlexEnd,
+            border: Rect::all(Val::Px(50.0)),
+            // flex_grow: 1.0,
+            ..Default::default()
+        },
+        material: materials.add(Color::NONE.into()),
+        ..Default::default()
+    })
+    .with_children(|parent| {
+        parent.spawn_bundle(TextBundle {
+            text: Text::with_section(
+                "2048",
+                TextStyle {
+                    font: asset_server
+                        .load("fonts/FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                    ..Default::default()
+                },
+                TextAlignment {
+                    vertical: VerticalAlign::Center,
+                    horizontal: HorizontalAlign::Center,
+                },
+            ),
+            ..Default::default()
+        });
+    
+        parent
+            .spawn_bundle(ButtonBundle {
+                style: Style {
+                    size: Size::new(
+                        Val::Px(150.0),
+                        Val::Px(50.0),
+                    ),
+                    // center button
+                    // margin: Rect::all(Val::Auto),
+                    // horizontally center child text
+                    justify_content: JustifyContent::Center,
+                    // vertically center child text
+                    align_items: AlignItems::Center,
+                    ..Default::default()
+                },
+                material: button_materials.normal.clone(),
+                ..Default::default()
+            })
+            .with_children(|parent| {
+                parent.spawn_bundle(TextBundle {
+                    text: Text::with_section(
+                        "Button",
+                        TextStyle {
+                            font: asset_server.load(
+                                "fonts/FiraSans-Bold.ttf",
+                            ),
+                            font_size: 40.0,
+                            color: Color::rgb(0.9, 0.9, 0.9),
+                        },
+                        Default::default(),
+                    ),
+                    ..Default::default()
+                });
+            });
+    });
+}
 fn spawn_board(
     mut commands: Commands,
     materials: Res<Materials>,
@@ -139,19 +228,28 @@ fn spawn_tiles(
     let board = query_board
         .single()
         .expect("always expect a board");
-    let starting_tiles = vec![
-        (0, 0),
-        (0, 1),
-        (3, 1),
-        (0, 2),
-        (2, 2),
-        (3, 2),
-        (0, 3),
-        (1, 3),
-        (2, 3),
-        (3, 3),
-    ];
-    for (x, y) in starting_tiles.iter() {
+    // insert new tile
+    let mut rng = rand::thread_rng();
+    let mut starting_tiles: Vec<Position> = vec![];
+    loop {
+        if starting_tiles.len() >= 2 {
+            break;
+        }
+
+        let pos = Position {
+            x: rng.gen_range(0..board.size),
+            y: rng.gen_range(0..board.size),
+        };
+        match starting_tiles.iter().find(|block_pos| {
+            block_pos.x == pos.x && block_pos.y == pos.y
+        }) {
+            Some(_) => continue,
+            None => {
+                starting_tiles.push(pos);
+            }
+        };
+    }
+    for Position { x, y } in starting_tiles.iter() {
         let pos = Position { x: *x, y: *y };
         let tile: (u8, u8) = (pos.x, pos.y);
         commands
@@ -264,8 +362,6 @@ fn render_blocks(
                         ),
                 },
             ));
-            // transform.translation.x = x;
-            // transform.translation.y = y;
         }
     }
 }
@@ -309,6 +405,7 @@ fn board_shift(
         &Children,
     )>,
     query_board: Query<&Board>,
+    mut tile_writer: EventWriter<NewTileEvent>,
 ) {
     let board = query_board
         .single()
@@ -400,6 +497,8 @@ fn board_shift(
             }
             break;
         }
+        // insert new block
+        tile_writer.send(NewTileEvent);
     } else if keyboard_input.just_pressed(KeyCode::Right) {
         let mut it = blocks
             .iter_mut()
@@ -481,6 +580,8 @@ fn board_shift(
 
             break;
         }
+        // insert new block
+        tile_writer.send(NewTileEvent);
     } else if keyboard_input.just_pressed(KeyCode::Down) {
         let mut it = blocks
             .iter_mut()
@@ -564,6 +665,8 @@ fn board_shift(
             }
             break;
         }
+        // insert new block
+        tile_writer.send(NewTileEvent);
     } else if keyboard_input.just_pressed(KeyCode::Up) {
         let mut it = blocks
             .iter_mut()
@@ -654,5 +757,90 @@ fn board_shift(
             }
             break;
         }
+        // insert new block
+        tile_writer.send(NewTileEvent);
+    }
+}
+
+fn new_tile_handler(
+    mut tile_reader: EventReader<NewTileEvent>,
+    mut commands: Commands,
+    query_board: Query<&Board>,
+    asset_server: Res<AssetServer>,
+    materials: Res<Materials>,
+    mut blocks: Query<(&mut Position, &mut Block)>,
+) {
+    let board = query_board
+        .single()
+        .expect("expect there to always be a board");
+    if tile_reader.iter().next().is_some() {
+        // insert new tile
+        let mut rng = rand::thread_rng();
+        let pos = loop {
+            let pos = Position {
+                x: rng.gen_range(0..board.size),
+                y: rng.gen_range(0..board.size),
+            };
+            match blocks.iter_mut().find(
+                |(block_pos, _block)| {
+                    block_pos.x == pos.x
+                        && block_pos.y == pos.y
+                },
+            ) {
+                Some(_) => continue,
+                None => {
+                    break pos;
+                }
+            }
+        };
+        let tile: (u8, u8) = (pos.x, pos.y);
+        commands
+            .spawn_bundle(SpriteBundle {
+                material: materials.block.clone(),
+                sprite: Sprite::new(Vec2::new(
+                    f32::from(board.size) * 10.0,
+                    f32::from(board.size) * 10.0,
+                )),
+                transform: Transform::from_xyz(
+                    block_pos_to_transform(
+                        board.size.into(),
+                        tile.0.into(),
+                    ),
+                    block_pos_to_transform(
+                        board.size.into(),
+                        tile.1.into(),
+                    ),
+                    1.0,
+                ),
+                ..Default::default()
+            })
+            .with_children(|child_builder| {
+                child_builder
+                    .spawn_bundle(Text2dBundle {
+                        text: Text::with_section(
+                            "2",
+                            TextStyle {
+                                font: asset_server.load(
+                                    "fonts/FiraSans-Bold.ttf",
+                                ),
+                                font_size: 40.0,
+                                color: Color::BLACK,
+                                ..Default::default()
+                            },
+                            TextAlignment {
+                                vertical: VerticalAlign::Center,
+                                horizontal:
+                                    HorizontalAlign::Center,
+                            },
+                        ),
+                        transform: Transform::from_xyz(
+                            0.0, 0.0, 1.0,
+                        ),
+                        ..Default::default()
+                    })
+                    .insert(BlockText);
+            })
+            .insert(Block { value: 2 })
+            .insert(pos);
     }
 }

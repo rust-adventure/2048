@@ -795,6 +795,7 @@ dependencies = [
  "bevy",
  "bevy_easings",
  "itertools",
+ "rand",
 ]
 
 [[package]]
