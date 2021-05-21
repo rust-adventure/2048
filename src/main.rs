@@ -120,8 +120,8 @@ fn setup_ui(
             .spawn_bundle(ButtonBundle {
                 style: Style {
                     size: Size::new(
-                        Val::Px(150.0),
-                        Val::Px(50.0),
+                        Val::Px(100.0),
+                        Val::Px(30.0),
                     ),
                     // center button
                     // margin: Rect::all(Val::Auto),
@@ -129,6 +129,13 @@ fn setup_ui(
                     justify_content: JustifyContent::Center,
                     // vertically center child text
                     align_items: AlignItems::Center,
+                    margin: Rect {
+                        left: Val::Px(20.0),
+                        right: Val::Px(20.0),
+                        top: Val::Px(20.0),
+                        bottom: Val::Px(20.0),
+                        
+                    },
                     ..Default::default()
                 },
                 material: button_materials.normal.clone(),
@@ -142,7 +149,7 @@ fn setup_ui(
                             font: asset_server.load(
                                 "fonts/FiraSans-Bold.ttf",
                             ),
-                            font_size: 40.0,
+                            font_size: 20.0,
                             color: Color::rgb(0.9, 0.9, 0.9),
                         },
                         Default::default(),
@@ -433,7 +440,6 @@ fn board_shift(
                     break;
                 }
                 (Some(mut block), None) => {
-                    dbg!((block.1.x, block.1.y));
                     block.1.x = x;
                 }
                 (Some(mut block), Some(block_next)) => {
@@ -515,7 +521,6 @@ fn board_shift(
             .peekable();
         let mut x: u8 = 0;
         loop {
-            // dbg!(board.size - 1 - x);
             match (it.next(), it.peek()) {
                 (None, _) => {
                     break;
@@ -682,7 +687,6 @@ fn board_shift(
         let mut y: u8 = 0;
 
         loop {
-            dbg!(y);
             match (it.next(), it.peek()) {
                 (None, _) => {
                     // nothing left to process
@@ -700,7 +704,6 @@ fn board_shift(
                         ),
                     ) {
                         MergeStatus::Merge => {
-                            dbg!("Merge");
                             // despawn the next block, and
                             // merge it with the current block.
                             let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
@@ -738,7 +741,6 @@ fn board_shift(
                             continue;
                         }
                         MergeStatus::DifferentRows => {
-                            dbg!("DifferentRows");
                             block.1.y = board.size - 1 - y;
                             y = 0;
                             continue;
