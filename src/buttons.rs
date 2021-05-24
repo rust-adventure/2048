@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::events::GameResetEvent;
+
 pub struct ButtonMaterials {
     pub normal: Handle<ColorMaterial>,
     pub hovered: Handle<ColorMaterial>,
@@ -33,6 +35,7 @@ pub fn button_system(
         (Changed<Interaction>, With<Button>),
     >,
     mut text_query: Query<&mut Text>,
+    mut game_reset_writer: EventWriter<GameResetEvent>,
 ) {
     for (interaction, mut material, children) in
         interaction_query.iter_mut()
@@ -45,6 +48,7 @@ pub fn button_system(
                     "Press".to_string();
                 *material =
                     button_materials.pressed.clone();
+                game_reset_writer.send(GameResetEvent);
             }
             Interaction::Hovered => {
                 text.sections[0].value =

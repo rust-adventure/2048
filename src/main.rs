@@ -4,8 +4,10 @@ use itertools::Itertools;
 use rand::{thread_rng, Rng};
 
 mod buttons;
+mod events;
 
 use buttons::*;
+use events::*;
 
 const TILE_SPACER: f32 = 10.0;
 const TILE_SIZE: f32 = 40.0;
@@ -23,7 +25,8 @@ struct BlockText;
 struct Board {
     size: u8,
 }
-struct NewTileEvent;
+
+
 struct Materials {
     board: Handle<ColorMaterial>,
     tile_placeholder: Handle<ColorMaterial>,
@@ -56,6 +59,8 @@ fn main() {
         .add_event::<NewTileEvent>()
         .init_resource::<ButtonMaterials>()
         .add_system(button_system.system())
+        .add_system(game_reset.system())
+        .add_event::<GameResetEvent>()
         .run();
 }
 
@@ -134,7 +139,6 @@ fn setup_ui(
                         right: Val::Px(20.0),
                         top: Val::Px(20.0),
                         bottom: Val::Px(20.0),
-                        
                     },
                     ..Default::default()
                 },
@@ -225,7 +229,23 @@ fn spawn_board(
         })
         .insert(board);
 }
-
+fn game_reset(
+    mut commands: Commands,
+    materials: Res<Materials>,
+    query_board: Query<&Board>,
+    asset_server: Res<AssetServer>,
+    mut game_reset_reader: EventReader<GameResetEvent>,
+    mut blocks: Query<Entity, With<Block>>,
+) {
+    if game_reset_reader.iter().next().is_some() {
+      for entity in blocks.iter() {
+        commands
+        .entity(entity)
+        .despawn_recursive();
+      }
+      spawn_tiles(commands, materials, query_board, asset_server);
+    }
+}
 fn spawn_tiles(
     mut commands: Commands,
     materials: Res<Materials>,
@@ -746,10 +766,6 @@ fn board_shift(
                             continue;
                         }
                         MergeStatus::DifferentValues => {
-                            println!(
-                                "DifferentValues: {:?}",
-                                board.size - 1 - y,
-                            );
                             block.1.y = board.size - 1 - y;
                             y = y + 1;
                             continue;
