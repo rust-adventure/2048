@@ -25,7 +25,12 @@ struct BlockText;
 struct Board {
     size: u8,
 }
+struct ScoreDisplay;
 
+#[derive(Default)]
+struct Game {
+    score: u32,
+}
 
 struct Materials {
     board: Handle<ColorMaterial>,
@@ -41,6 +46,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(
             0.04, 0.04, 0.1,
         )))
+        .init_resource::<Game>()
         .add_startup_system(setup.system())
         .add_startup_system(setup_ui.system())
         .add_plugins(DefaultPlugins)
@@ -61,6 +67,7 @@ fn main() {
         .add_system(button_system.system())
         .add_system(game_reset.system())
         .add_event::<GameResetEvent>()
+        .add_system(scoreboard.system())
         .run();
 }
 
@@ -80,14 +87,13 @@ fn setup(
         block: materials
             .add(Color::rgb(0.9, 0.9, 1.0).into()),
     });
-   
 }
 
-fn setup_ui(  
+fn setup_ui(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
-    button_materials: Res<ButtonMaterials>
+    button_materials: Res<ButtonMaterials>,
 ) {
     commands
     .spawn_bundle(NodeBundle {
@@ -122,7 +128,36 @@ fn setup_ui(
         });
     
         parent
-            .spawn_bundle(ButtonBundle {
+        .spawn_bundle(NodeBundle {
+            style: Style {
+                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::FlexEnd,
+                border: Rect::all(Val::Px(50.0)),
+                // flex_grow: 1.0,
+                ..Default::default()
+            },
+            material: materials.add(Color::NONE.into()),
+            ..Default::default()
+        }).with_children(|parent| {
+            parent.spawn_bundle(TextBundle {
+                text: Text::with_section(
+                    "Scoreboard",
+                    TextStyle {
+                        font: asset_server
+                            .load("fonts/FiraSans-Bold.ttf"),
+                        font_size: 40.0,
+                        color: Color::WHITE,
+                        ..Default::default()
+                    },
+                    TextAlignment {
+                        vertical: VerticalAlign::Center,
+                        horizontal: HorizontalAlign::Center,
+                    },
+                ),
+                ..Default::default()
+            }).insert(ScoreDisplay);
+            parent.spawn_bundle(ButtonBundle {
                 style: Style {
                     size: Size::new(
                         Val::Px(100.0),
@@ -161,6 +196,8 @@ fn setup_ui(
                     ..Default::default()
                 });
             });
+        });
+            
     });
 }
 fn spawn_board(
@@ -236,15 +273,30 @@ fn game_reset(
     asset_server: Res<AssetServer>,
     mut game_reset_reader: EventReader<GameResetEvent>,
     mut blocks: Query<Entity, With<Block>>,
+    mut game: ResMut<Game>,
 ) {
     if game_reset_reader.iter().next().is_some() {
-      for entity in blocks.iter() {
-        commands
-        .entity(entity)
-        .despawn_recursive();
-      }
-      spawn_tiles(commands, materials, query_board, asset_server);
+        for entity in blocks.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
+        game.score = 0;
+        spawn_tiles(
+            commands,
+            materials,
+            query_board,
+            asset_server,
+        );
     }
+}
+
+// update the score displayed during the game
+fn scoreboard(
+    game: Res<Game>,
+    mut query: Query<&mut Text, With<ScoreDisplay>>,
+) {
+    let mut text = query.single_mut().unwrap();
+    text.sections[0].value =
+        format!("Score: {}", game.score);
 }
 fn spawn_tiles(
     mut commands: Commands,
@@ -433,7 +485,21 @@ fn board_shift(
     )>,
     query_board: Query<&Board>,
     mut tile_writer: EventWriter<NewTileEvent>,
+    mut game: ResMut<Game>,
 ) {
+
+    // EndGameCheck
+    // TODO: 
+    // 1. End game if 16 blocks are on field
+    // 2. end game with proper checks
+    if blocks.iter_mut().len() == 16 {
+        // get all four sorts for each board shift direction
+        // check each sort for *any* merge possibility
+        // if a merge is possible anywhere, break out immediately
+        // if no merge possible anywhere, end game.
+    };
+
+    // Normal Processing
     let board = query_board
         .single()
         .expect("expect there to be a board");
@@ -472,12 +538,15 @@ fn board_shift(
                     ) {
                         MergeStatus::Merge => {
                             // despawn the next block, and
-                            // merge it with the current block.
+                            // merge it with the current
+                            // block.
                             let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
                             block.2.value = block.2.value
                                 + real_next_block.2.value;
                             block.1.x = x;
 
+                            // update score
+                            game.score += block.2.value;
                             // update text
                             for child in block.3.iter() {
                                 let mut text = texts
@@ -491,8 +560,10 @@ fn board_shift(
                                     .value
                                     .to_string();
                             }
-                            // if the next, next block (block #3 of 3)
-                            // isn't in the same row, reset x
+                            // if the next, next block
+                            // (block #3 of 3)
+                            // isn't in the same row, reset
+                            // x
                             // otherwise increment by one
                             if let Some(future) = it.peek()
                             {
@@ -562,6 +633,8 @@ fn board_shift(
                                 + real_next_block.2.value;
                             block.1.x = board.size - 1 - x;
 
+                            // update score
+                            game.score += block.2.value;
                             // update text
                             for child in block.3.iter() {
                                 let mut text = texts
@@ -639,13 +712,17 @@ fn board_shift(
                         ),
                     ) {
                         MergeStatus::Merge => {
-                            // _recursive the next block, and
-                            // merge it with the current block.
+                            // _recursive the next block,
+                            // and
+                            // merge it with the current
+                            // block.
                             let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
                             block.2.value = block.2.value
                                 + real_next_block.2.value;
                             block.1.y = y;
 
+                            // update score
+                            game.score += block.2.value;
                             // update text
                             for child in block.3.iter() {
                                 let mut text = texts
@@ -659,8 +736,10 @@ fn board_shift(
                                     .value
                                     .to_string();
                             }
-                            // if the next, next block (block #3 of 3)
-                            // isn't in the same row, reset x
+                            // if the next, next block
+                            // (block #3 of 3)
+                            // isn't in the same row, reset
+                            // x
                             // otherwise increment by one
                             if let Some(future) = it.peek()
                             {
@@ -725,12 +804,15 @@ fn board_shift(
                     ) {
                         MergeStatus::Merge => {
                             // despawn the next block, and
-                            // merge it with the current block.
+                            // merge it with the current
+                            // block.
                             let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
                             block.2.value = block.2.value
                                 + real_next_block.2.value;
                             block.1.y = board.size - 1 - y;
 
+                            // update score
+                            game.score += block.2.value;
                             // update text
                             for child in block.3.iter() {
                                 let mut text = texts
@@ -744,8 +826,10 @@ fn board_shift(
                                     .value
                                     .to_string();
                             }
-                            // if the next, next block (block #3 of 3)
-                            // isn't in the same row, reset x
+                            // if the next, next block
+                            // (block #3 of 3)
+                            // isn't in the same row, reset
+                            // x
                             // otherwise increment by one
                             if let Some(future) = it.peek()
                             {
