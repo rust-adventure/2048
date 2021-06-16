@@ -4,33 +4,17 @@ use itertools::Itertools;
 use rand::{thread_rng, Rng};
 
 mod buttons;
+mod components;
 mod events;
+mod ui;
 
 use buttons::*;
+use components::*;
 use events::*;
+use ui::*;
 
 const TILE_SPACER: f32 = 10.0;
 const TILE_SIZE: f32 = 40.0;
-
-#[derive(PartialEq, Eq)]
-struct Position {
-    x: u8,
-    y: u8,
-}
-struct Block {
-    value: u32,
-}
-struct BlockText;
-
-struct Board {
-    size: u8,
-}
-struct ScoreDisplay;
-
-#[derive(Default)]
-struct Game {
-    score: u32,
-}
 
 struct Materials {
     board: Handle<ColorMaterial>,
@@ -89,117 +73,6 @@ fn setup(
     });
 }
 
-fn setup_ui(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    asset_server: Res<AssetServer>,
-    button_materials: Res<ButtonMaterials>,
-) {
-    commands
-    .spawn_bundle(NodeBundle {
-        style: Style {
-            size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::FlexEnd,
-            border: Rect::all(Val::Px(50.0)),
-            // flex_grow: 1.0,
-            ..Default::default()
-        },
-        material: materials.add(Color::NONE.into()),
-        ..Default::default()
-    })
-    .with_children(|parent| {
-        parent.spawn_bundle(TextBundle {
-            text: Text::with_section(
-                "2048",
-                TextStyle {
-                    font: asset_server
-                        .load("fonts/FiraSans-Bold.ttf"),
-                    font_size: 40.0,
-                    color: Color::WHITE,
-                    ..Default::default()
-                },
-                TextAlignment {
-                    vertical: VerticalAlign::Center,
-                    horizontal: HorizontalAlign::Center,
-                },
-            ),
-            ..Default::default()
-        });
-    
-        parent
-        .spawn_bundle(NodeBundle {
-            style: Style {
-                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::FlexEnd,
-                border: Rect::all(Val::Px(50.0)),
-                // flex_grow: 1.0,
-                ..Default::default()
-            },
-            material: materials.add(Color::NONE.into()),
-            ..Default::default()
-        }).with_children(|parent| {
-            parent.spawn_bundle(TextBundle {
-                text: Text::with_section(
-                    "Scoreboard",
-                    TextStyle {
-                        font: asset_server
-                            .load("fonts/FiraSans-Bold.ttf"),
-                        font_size: 40.0,
-                        color: Color::WHITE,
-                        ..Default::default()
-                    },
-                    TextAlignment {
-                        vertical: VerticalAlign::Center,
-                        horizontal: HorizontalAlign::Center,
-                    },
-                ),
-                ..Default::default()
-            }).insert(ScoreDisplay);
-            parent.spawn_bundle(ButtonBundle {
-                style: Style {
-                    size: Size::new(
-                        Val::Px(100.0),
-                        Val::Px(30.0),
-                    ),
-                    // center button
-                    // margin: Rect::all(Val::Auto),
-                    // horizontally center child text
-                    justify_content: JustifyContent::Center,
-                    // vertically center child text
-                    align_items: AlignItems::Center,
-                    margin: Rect {
-                        left: Val::Px(20.0),
-                        right: Val::Px(20.0),
-                        top: Val::Px(20.0),
-                        bottom: Val::Px(20.0),
-                    },
-                    ..Default::default()
-                },
-                material: button_materials.normal.clone(),
-                ..Default::default()
-            })
-            .with_children(|parent| {
-                parent.spawn_bundle(TextBundle {
-                    text: Text::with_section(
-                        "Button",
-                        TextStyle {
-                            font: asset_server.load(
-                                "fonts/FiraSans-Bold.ttf",
-                            ),
-                            font_size: 20.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                        },
-                        Default::default(),
-                    ),
-                    ..Default::default()
-                });
-            });
-        });
-            
-    });
-}
 fn spawn_board(
     mut commands: Commands,
     materials: Res<Materials>,
@@ -289,15 +162,6 @@ fn game_reset(
     }
 }
 
-// update the score displayed during the game
-fn scoreboard(
-    game: Res<Game>,
-    mut query: Query<&mut Text, With<ScoreDisplay>>,
-) {
-    let mut text = query.single_mut().unwrap();
-    text.sections[0].value =
-        format!("Score: {}", game.score);
-}
 fn spawn_tiles(
     mut commands: Commands,
     materials: Res<Materials>,
@@ -487,16 +351,17 @@ fn board_shift(
     mut tile_writer: EventWriter<NewTileEvent>,
     mut game: ResMut<Game>,
 ) {
-
     // EndGameCheck
-    // TODO: 
+    // TODO:
     // 1. End game if 16 blocks are on field
     // 2. end game with proper checks
     if blocks.iter_mut().len() == 16 {
-        // get all four sorts for each board shift direction
-        // check each sort for *any* merge possibility
-        // if a merge is possible anywhere, break out immediately
-        // if no merge possible anywhere, end game.
+        // get all four sorts for each board shift
+        // direction check each sort for
+        // *any* merge possibility
+        // if a merge is possible anywhere, break
+        // out immediately if no merge
+        // possible anywhere, end game.
     };
 
     // Normal Processing
@@ -861,6 +726,9 @@ fn board_shift(
         }
         // insert new block
         tile_writer.send(NewTileEvent);
+    }
+    if game.score_best < game.score {
+        game.score_best = game.score;
     }
 }
 

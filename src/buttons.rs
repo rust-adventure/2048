@@ -45,7 +45,7 @@ pub fn button_system(
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value =
-                    "Press".to_string();
+                    "Resetting".to_string();
                 *material =
                     button_materials.pressed.clone();
                 game_reset_writer.send(GameResetEvent);
@@ -58,7 +58,7 @@ pub fn button_system(
             }
             Interaction::None => {
                 text.sections[0].value =
-                    "Button".to_string();
+                    "Reset".to_string();
                 *material = button_materials.normal.clone();
             }
         }
