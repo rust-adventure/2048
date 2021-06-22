@@ -15,11 +15,11 @@ impl FromWorld for ButtonMaterials {
             .unwrap();
         ButtonMaterials {
             normal: materials
-                .add(Color::rgb(0.15, 0.15, 0.15).into()),
+                .add(Color::rgb(0.75, 0.75, 0.9).into()),
             hovered: materials
-                .add(Color::rgb(0.25, 0.25, 0.25).into()),
+                .add(Color::rgb(0.7, 0.7, 0.9).into()),
             pressed: materials
-                .add(Color::rgb(0.35, 0.75, 0.35).into()),
+                .add(Color::rgb(0.6, 0.6, 1.0).into()),
         }
     }
 }
@@ -40,8 +40,11 @@ pub fn button_system(
     for (interaction, mut material, children) in
         interaction_query.iter_mut()
     {
-        let mut text =
-            text_query.get_mut(children[0]).unwrap();
+        let mut text = text_query
+            .get_mut(*children.first().expect(
+                "expect button to have a first child",
+            ))
+            .unwrap();
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value =
@@ -51,8 +54,6 @@ pub fn button_system(
                 game_reset_writer.send(GameResetEvent);
             }
             Interaction::Hovered => {
-                text.sections[0].value =
-                    "Hover".to_string();
                 *material =
                     button_materials.hovered.clone();
             }

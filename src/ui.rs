@@ -1,6 +1,5 @@
 use crate::buttons::*;
 use crate::components::Game;
-use bevy::ecs::system::EntityCommands;
 use bevy::prelude::*;
 
 pub struct ScoreDisplay;
@@ -20,7 +19,6 @@ pub fn setup_ui(
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexEnd,
             border: Rect::all(Val::Px(50.0)),
-            // flex_grow: 1.0,
             ..Default::default()
         },
         material: materials.add(Color::NONE.into()),
@@ -52,8 +50,6 @@ pub fn setup_ui(
                 align_items: AlignItems::FlexEnd,
                 justify_content: JustifyContent::Center,
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                // border: Rect::all(Val::Px(0.0)),
-                // flex_grow: 1.0,
                 ..Default::default()
             },
             material: materials.add(Color::NONE.into()),
@@ -73,7 +69,6 @@ pub fn setup_ui(
                     bottom: Val::Px(0.0),
                 },
                 border: Rect::all(Val::Px(10.0)),
-                // flex_grow: 1.0,
                 ..Default::default()
             },
             material: materials
@@ -121,11 +116,8 @@ pub fn setup_ui(
                 style: Style {
                     display:Display::Flex,
                     flex_direction: FlexDirection::ColumnReverse,
-                    // size: Size::new(Val::Px(40.0), Val::Px(20.0)),
-                    // justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     border: Rect::all(Val::Px(10.0)),
-                    // flex_grow: 1.0,
                     ..Default::default()
                 },
                 material: materials
