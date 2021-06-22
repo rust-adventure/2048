@@ -145,7 +145,7 @@ fn game_reset(
     query_board: Query<&Board>,
     asset_server: Res<AssetServer>,
     mut game_reset_reader: EventReader<GameResetEvent>,
-    mut blocks: Query<Entity, With<Block>>,
+    blocks: Query<Entity, With<Block>>,
     mut game: ResMut<Game>,
 ) {
     if game_reset_reader.iter().next().is_some() {
@@ -172,7 +172,7 @@ fn spawn_tiles(
         .single()
         .expect("always expect a board");
     // insert new tile
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let mut starting_tiles: Vec<Position> = vec![];
     loop {
         if starting_tiles.len() >= 2 {
@@ -278,7 +278,7 @@ fn render_blocks(
     let board = query_board
         .single()
         .expect("expect there to be a board");
-    for (entity, mut transform, pos, pos_changed) in
+    for (entity, transform, pos, pos_changed) in
         blocks.iter_mut()
     {
         if pos_changed {
@@ -339,7 +339,6 @@ fn should_merge(
 fn board_shift(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    // mut query_world: Query<&mut World>,
     mut texts: Query<(Entity, &mut Text), With<BlockText>>,
     mut blocks: Query<(
         Entity,
@@ -356,6 +355,7 @@ fn board_shift(
     // 1. End game if 16 blocks are on field
     // 2. end game with proper checks
     if blocks.iter_mut().len() == 16 {
+        // let map = std::collections::HashMap::new();
         // get all four sorts for each board shift
         // direction check each sort for
         // *any* merge possibility
@@ -370,7 +370,7 @@ fn board_shift(
         .expect("expect there to be a board");
 
     if keyboard_input.just_pressed(KeyCode::Left) {
-        let mut it = blocks
+        let it = blocks
             .iter_mut()
             .sorted_by(|a, b| {
                 match Ord::cmp(&a.1.y, &b.1.y) {
@@ -380,89 +380,21 @@ fn board_shift(
                     ordering => ordering,
                 }
             })
-            // .sorted_by_key(|v| v.1.y)
             .peekable();
-        let mut x: u8 = 0;
-
-        loop {
-            match (it.next(), it.peek()) {
-                (None, _) => {
-                    // nothing left to process
-                    break;
-                }
-                (Some(mut block), None) => {
-                    block.1.x = x;
-                }
-                (Some(mut block), Some(block_next)) => {
-                    match should_merge(
-                        (block.2.value, block.1.y),
-                        (
-                            block_next.2.value,
-                            block_next.1.y,
-                        ),
-                    ) {
-                        MergeStatus::Merge => {
-                            // despawn the next block, and
-                            // merge it with the current
-                            // block.
-                            let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
-                            block.2.value = block.2.value
-                                + real_next_block.2.value;
-                            block.1.x = x;
-
-                            // update score
-                            game.score += block.2.value;
-                            // update text
-                            for child in block.3.iter() {
-                                let mut text = texts
-                                    .get_mut(*child)
-                                    .expect(
-                                        "text to exist",
-                                    );
-                                let mut section = text.1.sections.first_mut().expect("expect a single section in text");
-                                section.value = block
-                                    .2
-                                    .value
-                                    .to_string();
-                            }
-                            // if the next, next block
-                            // (block #3 of 3)
-                            // isn't in the same row, reset
-                            // x
-                            // otherwise increment by one
-                            if let Some(future) = it.peek()
-                            {
-                                if block.1.y != future.1.y {
-                                    x = 0;
-                                } else {
-                                    x = x + 1;
-                                }
-                            }
-
-                            commands
-                                .entity(real_next_block.0)
-                                .despawn_recursive();
-                            continue;
-                        }
-                        MergeStatus::DifferentRows => {
-                            block.1.x = x;
-                            x = 0;
-                            continue;
-                        }
-                        MergeStatus::DifferentValues => {
-                            block.1.x = x;
-                            x = x + 1;
-                            continue;
-                        }
-                    }
-                }
-            }
-            break;
-        }
+        board_shift_2(
+            it,
+            &mut game,
+            commands,
+            |position, path| {
+                position.x = path;
+            },
+            texts,
+            MergeDirection::Y,
+        );
         // insert new block
         tile_writer.send(NewTileEvent);
     } else if keyboard_input.just_pressed(KeyCode::Right) {
-        let mut it = blocks
+        let it = blocks
             .iter_mut()
             // we want our sorting to first sort by x,
             // then break x ties with y's comparison
@@ -475,78 +407,21 @@ fn board_shift(
                 }
             })
             .peekable();
-        let mut x: u8 = 0;
-        loop {
-            match (it.next(), it.peek()) {
-                (None, _) => {
-                    break;
-                }
-                (Some(mut block), None) => {
-                    block.1.x = board.size - 1 - x;
-                }
-                (Some(mut block), Some(block_next)) => {
-                    match should_merge(
-                        (block.2.value, block.1.y),
-                        (
-                            block_next.2.value,
-                            block_next.1.y,
-                        ),
-                    ) {
-                        MergeStatus::Merge => {
-                            let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
-                            block.2.value = block.2.value
-                                + real_next_block.2.value;
-                            block.1.x = board.size - 1 - x;
 
-                            // update score
-                            game.score += block.2.value;
-                            // update text
-                            for child in block.3.iter() {
-                                let mut text = texts
-                                    .get_mut(*child)
-                                    .expect(
-                                        "text to exist",
-                                    );
-                                let mut section = text.1.sections.first_mut().expect("expect a single section in text");
-                                section.value = block
-                                    .2
-                                    .value
-                                    .to_string();
-                            }
-
-                            if let Some(future) = it.peek()
-                            {
-                                if block.1.y != future.1.y {
-                                    x = 0;
-                                } else {
-                                    x = x + 1;
-                                }
-                            }
-                            commands
-                                .entity(real_next_block.0)
-                                .despawn_recursive();
-                            continue;
-                        }
-                        MergeStatus::DifferentRows => {
-                            block.1.x = board.size - 1 - x;
-                            x = 0;
-                            continue;
-                        }
-                        MergeStatus::DifferentValues => {
-                            block.1.x = board.size - 1 - x;
-                            x = x + 1;
-                            continue;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-        // insert new block
+        board_shift_2(
+            it,
+            &mut game,
+            commands,
+            |position, path| {
+                position.x = board.size - 1 - path;
+            },
+            texts,
+            MergeDirection::Y,
+        );
+        // // insert new block
         tile_writer.send(NewTileEvent);
     } else if keyboard_input.just_pressed(KeyCode::Down) {
-        let mut it = blocks
+        let it = blocks
             .iter_mut()
             .sorted_by(|a, b| {
                 match Ord::cmp(&a.1.x, &b.1.x) {
@@ -557,87 +432,21 @@ fn board_shift(
                 }
             })
             .peekable();
-        let mut y: u8 = 0;
 
-        loop {
-            match (it.next(), it.peek()) {
-                (None, _) => {
-                    // nothing left to process
-                    break;
-                }
-                (Some(mut block), None) => {
-                    block.1.y = y;
-                }
-                (Some(mut block), Some(block_next)) => {
-                    match should_merge(
-                        (block.2.value, block.1.x),
-                        (
-                            block_next.2.value,
-                            block_next.1.x,
-                        ),
-                    ) {
-                        MergeStatus::Merge => {
-                            // _recursive the next block,
-                            // and
-                            // merge it with the current
-                            // block.
-                            let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
-                            block.2.value = block.2.value
-                                + real_next_block.2.value;
-                            block.1.y = y;
-
-                            // update score
-                            game.score += block.2.value;
-                            // update text
-                            for child in block.3.iter() {
-                                let mut text = texts
-                                    .get_mut(*child)
-                                    .expect(
-                                        "text to exist",
-                                    );
-                                let mut section = text.1.sections.first_mut().expect("expect a single section in text");
-                                section.value = block
-                                    .2
-                                    .value
-                                    .to_string();
-                            }
-                            // if the next, next block
-                            // (block #3 of 3)
-                            // isn't in the same row, reset
-                            // x
-                            // otherwise increment by one
-                            if let Some(future) = it.peek()
-                            {
-                                if block.1.x != future.1.x {
-                                    y = 0;
-                                } else {
-                                    y = y + 1;
-                                }
-                            }
-                            commands
-                                .entity(real_next_block.0)
-                                .despawn_recursive();
-                            continue;
-                        }
-                        MergeStatus::DifferentRows => {
-                            block.1.y = y;
-                            y = 0;
-                            continue;
-                        }
-                        MergeStatus::DifferentValues => {
-                            block.1.y = y;
-                            y = y + 1;
-                            continue;
-                        }
-                    }
-                }
-            }
-            break;
-        }
+        board_shift_2(
+            it,
+            &mut game,
+            commands,
+            |position, path| {
+                position.y = path;
+            },
+            texts,
+            MergeDirection::X,
+        );
         // insert new block
         tile_writer.send(NewTileEvent);
     } else if keyboard_input.just_pressed(KeyCode::Up) {
-        let mut it = blocks
+        let it = blocks
             .iter_mut()
             .sorted_by(|a, b| {
                 match Ord::cmp(&b.1.x, &a.1.x) {
@@ -648,82 +457,17 @@ fn board_shift(
                 }
             })
             .peekable();
-        let mut y: u8 = 0;
 
-        loop {
-            match (it.next(), it.peek()) {
-                (None, _) => {
-                    // nothing left to process
-                    break;
-                }
-                (Some(mut block), None) => {
-                    block.1.y = board.size - 1 - y;
-                }
-                (Some(mut block), Some(block_next)) => {
-                    match should_merge(
-                        (block.2.value, block.1.x),
-                        (
-                            block_next.2.value,
-                            block_next.1.x,
-                        ),
-                    ) {
-                        MergeStatus::Merge => {
-                            // despawn the next block, and
-                            // merge it with the current
-                            // block.
-                            let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
-                            block.2.value = block.2.value
-                                + real_next_block.2.value;
-                            block.1.y = board.size - 1 - y;
-
-                            // update score
-                            game.score += block.2.value;
-                            // update text
-                            for child in block.3.iter() {
-                                let mut text = texts
-                                    .get_mut(*child)
-                                    .expect(
-                                        "text to exist",
-                                    );
-                                let mut section = text.1.sections.first_mut().expect("expect a single section in text");
-                                section.value = block
-                                    .2
-                                    .value
-                                    .to_string();
-                            }
-                            // if the next, next block
-                            // (block #3 of 3)
-                            // isn't in the same row, reset
-                            // x
-                            // otherwise increment by one
-                            if let Some(future) = it.peek()
-                            {
-                                if block.1.x != future.1.x {
-                                    y = 0;
-                                } else {
-                                    y = y + 1;
-                                }
-                            }
-                            commands
-                                .entity(real_next_block.0)
-                                .despawn_recursive();
-                            continue;
-                        }
-                        MergeStatus::DifferentRows => {
-                            block.1.y = board.size - 1 - y;
-                            y = 0;
-                            continue;
-                        }
-                        MergeStatus::DifferentValues => {
-                            block.1.y = board.size - 1 - y;
-                            y = y + 1;
-                            continue;
-                        }
-                    }
-                }
-            }
-            break;
-        }
+        board_shift_2(
+            it,
+            &mut game,
+            commands,
+            |position, path| {
+                position.y = board.size - 1 - path;
+            },
+            texts,
+            MergeDirection::X,
+        );
         // insert new block
         tile_writer.send(NewTileEvent);
     }
@@ -812,5 +556,140 @@ fn new_tile_handler(
             })
             .insert(Block { value: 2 })
             .insert(pos);
+    }
+}
+
+enum MergeDirection {
+    X,
+    Y,
+}
+fn board_shift_2<'a, I, F>(
+    mut it: std::iter::Peekable<I>,
+    game: &mut ResMut<Game>,
+    mut commands: Commands,
+    set_path_on_block: F,
+    mut texts: Query<(Entity, &mut Text), With<BlockText>>,
+    merge_direction: MergeDirection,
+) where
+    I: Iterator<
+        Item = (
+            Entity,
+            Mut<'a, Position>,
+            Mut<'a, Block>,
+            &'a Children,
+        ),
+    >,
+    F: Fn(&mut Mut<Position>, u8) -> (),
+{
+    let mut path: u8 = 0;
+
+    loop {
+        match (it.next(), it.peek()) {
+            (None, _) => {
+                // nothing left to process
+                break;
+            }
+            (Some(mut block), None) => {
+                set_path_on_block(&mut block.1, path);
+                // block.1.x = path;
+            }
+            (Some(mut block), Some(block_next)) => {
+                match should_merge(
+                    (
+                        block.2.value,
+                        match merge_direction {
+                            MergeDirection::X => block.1.x,
+                            MergeDirection::Y => block.1.y,
+                        },
+                    ),
+                    (
+                        block_next.2.value,
+                        match merge_direction {
+                            MergeDirection::X => {
+                                block_next.1.x
+                            }
+                            MergeDirection::Y => {
+                                block_next.1.y
+                            }
+                        },
+                    ),
+                ) {
+                    MergeStatus::Merge => {
+                        // despawn the next block, and
+                        // merge it with the current
+                        // block.
+                        let real_next_block = it.next().expect("A peeked block should always exist when we .next here");
+                        block.2.value = block.2.value
+                            + real_next_block.2.value;
+                        set_path_on_block(
+                            &mut block.1,
+                            path,
+                        );
+
+                        // update score
+                        game.score += block.2.value;
+                        // update text
+                        for child in block.3.iter() {
+                            let mut text = texts
+                                .get_mut(*child)
+                                .expect("text to exist");
+                            let mut section = text.1.sections.first_mut().expect("expect a single section in text");
+                            section.value =
+                                block.2.value.to_string();
+                        }
+
+                        // if the next, next block
+                        // (block #3 of 3)
+                        // isn't in the same row, reset
+                        // x
+                        // otherwise increment by one
+                        if let Some(future) = it.peek() {
+                            match merge_direction {
+                                MergeDirection::X => {
+                                    if block.1.x
+                                        != future.1.x
+                                    {
+                                        path = 0;
+                                    } else {
+                                        path = path + 1;
+                                    }
+                                }
+                                MergeDirection::Y => {
+                                    if block.1.y
+                                        != future.1.y
+                                    {
+                                        path = 0;
+                                    } else {
+                                        path = path + 1;
+                                    }
+                                }
+                            }
+                        }
+
+                        commands
+                            .entity(real_next_block.0)
+                            .despawn_recursive();
+                        continue;
+                    }
+                    MergeStatus::DifferentRows => {
+                        set_path_on_block(
+                            &mut block.1,
+                            path,
+                        );
+                        path = 0;
+                        continue;
+                    }
+                    MergeStatus::DifferentValues => {
+                        set_path_on_block(
+                            &mut block.1,
+                            path,
+                        );
+                        path = path + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        break;
     }
 }
