@@ -1,8 +1,9 @@
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct Position {
     pub x: u8,
     pub y: u8,
 }
+#[derive(Debug)]
 pub struct Block {
     pub value: u32,
 }
