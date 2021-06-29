@@ -1,6 +1,5 @@
+use crate::components::RunState;
 use bevy::prelude::*;
-
-use crate::events::GameResetEvent;
 
 pub struct ButtonMaterials {
     pub normal: Handle<ColorMaterial>,
@@ -35,7 +34,7 @@ pub fn button_system(
         (Changed<Interaction>, With<Button>),
     >,
     mut text_query: Query<&mut Text>,
-    mut game_reset_writer: EventWriter<GameResetEvent>,
+    mut run_state: ResMut<State<RunState>>,
 ) {
     for (interaction, mut material, children) in
         interaction_query.iter_mut()
@@ -47,19 +46,38 @@ pub fn button_system(
             .unwrap();
         match *interaction {
             Interaction::Clicked => {
-                text.sections[0].value =
-                    "Resetting".to_string();
                 *material =
                     button_materials.pressed.clone();
-                game_reset_writer.send(GameResetEvent);
+
+                match run_state.current() {
+                    RunState::Playing => {
+                        run_state
+                            .set(RunState::GameOver)
+                            .unwrap();
+                    }
+                    RunState::GameOver => {
+                        run_state
+                            .set(RunState::Playing)
+                            .unwrap();
+                    }
+                }
             }
             Interaction::Hovered => {
                 *material =
                     button_materials.hovered.clone();
             }
             Interaction::None => {
-                text.sections[0].value =
-                    "Reset".to_string();
+                match run_state.current() {
+                    RunState::Playing => {
+                        text.sections[0].value =
+                            "End Game".to_string();
+                    }
+                    RunState::GameOver => {
+                        text.sections[0].value =
+                            "New Game".to_string();
+                    }
+                }
+
                 *material = button_materials.normal.clone();
             }
         }

@@ -24,6 +24,7 @@ struct Materials {
     tile_placeholder: Handle<ColorMaterial>,
     block: Handle<ColorMaterial>,
 }
+
 fn main() {
     App::build()
         .insert_resource(WindowDescriptor {
@@ -35,26 +36,35 @@ fn main() {
         )))
         .init_resource::<Game>()
         .add_startup_system(setup.system())
-        .add_startup_system(setup_ui.system())
+        // .add_startup_system(setup_ui.system())
         .add_plugins(DefaultPlugins)
+        .add_plugin(GameUiPlugin)
         .add_plugin(bevy_easings::EasingsPlugin)
         .add_startup_stage(
-            "game_setup",
+            "board_setup",
             SystemStage::single(spawn_board.system()),
         )
-        .add_startup_stage(
-            "tile_start",
-            SystemStage::single(spawn_tiles.system()),
+        .add_state(RunState::Playing)
+        .add_system_set(
+            SystemSet::on_update(RunState::Playing)
+                .with_system(board_shift.system())
+                .with_system(render_blocks.system())
+                .with_system(new_tile_handler.system()),
         )
-        .add_system(board_shift.system())
-        .add_system(render_blocks.system())
-        .add_system(new_tile_handler.system())
+        // setup when entering the state
+        .add_system_set(
+            SystemSet::on_enter(RunState::Playing)
+                .with_system(
+                    game_reset.system().label("reset"),
+                )
+                .with_system(
+                    spawn_tiles.system().after("reset"),
+                ),
+        )
         .add_event::<NewTileEvent>()
-        .init_resource::<ButtonMaterials>()
-        .add_system(button_system.system())
-        .add_system(game_reset.system())
-        .add_event::<GameResetEvent>()
-        .add_system(scoreboard.system())
+        // .init_resource::<ButtonMaterials>()
+        // .add_system(button_system.system())
+        // .add_system(scoreboard.system())
         .run();
 }
 
@@ -144,25 +154,26 @@ fn spawn_board(
 }
 fn game_reset(
     mut commands: Commands,
-    materials: Res<Materials>,
-    query_board: Query<&Board>,
-    asset_server: Res<AssetServer>,
-    mut game_reset_reader: EventReader<GameResetEvent>,
+    // materials: Res<Materials>,
+    // query_board: Query<&Board>,
+    // asset_server: Res<AssetServer>,
+    // mut game_reset_reader: EventReader<GameResetEvent>,
     blocks: Query<Entity, With<Block>>,
     mut game: ResMut<Game>,
 ) {
-    if game_reset_reader.iter().next().is_some() {
-        for entity in blocks.iter() {
-            commands.entity(entity).despawn_recursive();
-        }
-        game.score = 0;
-        spawn_tiles(
-            commands,
-            materials,
-            query_board,
-            asset_server,
-        );
+    dbg!("reset");
+    // if game_reset_reader.iter().next().is_some() {
+    for entity in blocks.iter() {
+        commands.entity(entity).despawn_recursive();
     }
+    game.score = 0;
+    // spawn_tiles(
+    //     commands,
+    //     materials,
+    //     query_board,
+    //     asset_server,
+    // );
+    // }
 }
 
 fn spawn_tiles(
@@ -352,8 +363,8 @@ fn board_shift(
     )>,
     query_board: Query<&Board>,
     mut tile_writer: EventWriter<NewTileEvent>,
-    mut game_reset_writer: EventWriter<GameResetEvent>,
     mut game: ResMut<Game>,
+    mut run_state: ResMut<State<RunState>>,
 ) {
     // Normal Processing
     let board = query_board
@@ -409,13 +420,7 @@ fn board_shift(
             .is_some();
 
         if has_move == false {
-            game_reset_writer.send(GameResetEvent);
-            for entity in blocks.iter_mut() {
-                commands
-                    .entity(entity.0)
-                    .despawn_recursive();
-            }
-            return;
+            run_state.set(RunState::GameOver).unwrap();
         }
     };
 

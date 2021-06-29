@@ -5,7 +5,19 @@ use bevy::prelude::*;
 pub struct ScoreDisplay;
 pub struct BestScoreDisplay;
 
-pub fn setup_ui(
+pub struct GameUiPlugin;
+
+impl Plugin for GameUiPlugin {
+    fn build(&self, app: &mut AppBuilder) {
+        
+app              .add_startup_system(setup_ui.system())
+.init_resource::<ButtonMaterials>()
+        .add_system(button_system.system())
+        .add_system(scoreboard.system())   ;
+    }
+}
+
+fn setup_ui(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
@@ -183,6 +195,7 @@ pub fn setup_ui(
                 },
                 ..Default::default()
             },
+            
             material: button_materials.normal.clone(),
             ..Default::default()
         })
@@ -206,7 +219,7 @@ pub fn setup_ui(
 }
 
 // update the score displayed during the game
-pub fn scoreboard(
+fn scoreboard(
     game: Res<Game>,
     mut query_scores: QuerySet<(
         Query<&mut Text, With<ScoreDisplay>>,

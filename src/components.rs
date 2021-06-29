@@ -18,3 +18,9 @@ pub struct Game {
     pub score: u32,
     pub score_best: u32,
 }
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum RunState {
+    Playing,
+    GameOver,
+}
