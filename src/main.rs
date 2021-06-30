@@ -86,10 +86,7 @@ fn spawn_board(mut commands: Commands, materials: Res<Materials>) {
             for tile in (0..board.size).cartesian_product(0..board.size) {
                 child_builder.spawn_bundle(SpriteBundle {
                     material: materials.tile_placeholder.clone(),
-                    sprite: Sprite::new(Vec2::new(
-                        f32::from(board.size) * 10.0,
-                        f32::from(board.size) * 10.0,
-                    )),
+                    sprite: Sprite::new(Vec2::new(TILE_SIZE, TILE_SIZE)),
                     transform: Transform::from_xyz(
                         // true position
                         f32::from(tile.0) * TILE_SIZE
@@ -145,10 +142,7 @@ fn spawn_tiles(
         commands
             .spawn_bundle(SpriteBundle {
                 material: materials.block.clone(),
-                sprite: Sprite::new(Vec2::new(
-                    f32::from(board.size) * 10.0,
-                    f32::from(board.size) * 10.0,
-                )),
+                sprite: Sprite::new(Vec2::new(TILE_SIZE, TILE_SIZE)),
                 transform: Transform::from_xyz(
                     block_pos_to_transform(board.size, pos.x),
                     block_pos_to_transform(board.size, pos.y),
@@ -645,10 +639,7 @@ fn new_tile_handler(
                 commands
                     .spawn_bundle(SpriteBundle {
                         material: materials.block.clone(),
-                        sprite: Sprite::new(Vec2::new(
-                            f32::from(board.size) * 10.0,
-                            f32::from(board.size) * 10.0,
-                        )),
+                        sprite: Sprite::new(Vec2::new(TILE_SIZE, TILE_SIZE)),
                         transform: Transform::from_xyz(
                             block_pos_to_transform(board.size, pos.x),
                             block_pos_to_transform(board.size, pos.y),
