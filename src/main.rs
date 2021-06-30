@@ -8,7 +8,6 @@ use std::ops::Range;
 
 mod buttons;
 mod components;
-mod events;
 mod ui;
 
 use components::*;
