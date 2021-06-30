@@ -1,6 +1,8 @@
-use crate::buttons::*;
 use crate::components::Game;
 use bevy::prelude::*;
+
+mod buttons;
+use buttons::*;
 
 pub struct ScoreDisplay;
 pub struct BestScoreDisplay;
