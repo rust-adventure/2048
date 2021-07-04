@@ -61,10 +61,27 @@ impl FromWorld for Materials {
     }
 }
 
+struct FontSpec {
+    family: Handle<Font>,
+}
+
+impl FromWorld for FontSpec {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world
+            .get_resource_mut::<AssetServer>()
+            .unwrap();
+        FontSpec {
+            family: asset_server
+                .load("fonts/FiraSans-Bold.ttf"),
+        }
+    }
+}
+
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
         .init_resource::<Materials>()
+        .init_resource::<FontSpec>()
         .add_startup_system(setup.system())
         .add_startup_system(spawn_board.system())
         .add_startup_system_to_stage(
@@ -125,6 +142,7 @@ fn spawn_tiles(
     mut commands: Commands,
     materials: Res<Materials>,
     query_board: Query<&Board>,
+    font_spec: Res<FontSpec>,
 ) {
     let board = query_board
         .single()
@@ -155,6 +173,9 @@ fn spawn_tiles(
                         text: Text::with_section(
                             "2",
                             TextStyle {
+                                font: font_spec
+                                    .family
+                                    .clone(),
                                 font_size: 40.0,
                                 color: Color::BLACK,
                                 ..Default::default()
