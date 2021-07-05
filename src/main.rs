@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::{cmp::Ordering, convert::TryFrom};
 
 use bevy::prelude::*;
 use itertools::Itertools;
@@ -31,9 +31,12 @@ impl Board {
     }
 }
 
+#[derive(Debug)]
 struct Points {
     value: u32,
 }
+
+#[derive(Debug)]
 struct Position {
     x: u8,
     y: u8,
@@ -240,7 +243,10 @@ fn render_tile_points(
     }
 }
 
-fn board_shift(keyboard_input: Res<Input<KeyCode>>) {
+fn board_shift(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut tiles: Query<(Entity, &mut Position, &mut Points)>,
+) {
     let shift_direction =
         keyboard_input.get_just_pressed().find_map(
             |key_code| BoardShift::try_from(key_code).ok(),
@@ -248,7 +254,15 @@ fn board_shift(keyboard_input: Res<Input<KeyCode>>) {
 
     match shift_direction {
         Some(BoardShift::Left) => {
-            dbg!("left");
+            let mut it =
+                tiles.iter_mut().sorted_by(|a, b| {
+                    match Ord::cmp(&a.1.y, &b.1.y) {
+                        Ordering::Equal => {
+                            Ord::cmp(&a.1.x, &b.1.x)
+                        }
+                        ordering => ordering,
+                    }
+                });
         }
         Some(BoardShift::Right) => {
             dbg!("right");
