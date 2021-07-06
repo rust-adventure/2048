@@ -117,6 +117,7 @@ fn main() {
         )
         .add_system(render_tile_points.system())
         .add_system(board_shift.system())
+        .add_system(render_tiles.system())
         .run()
 }
 
@@ -324,5 +325,28 @@ fn board_shift(
             dbg!("down");
         }
         None => (),
+    }
+}
+
+fn render_tiles(
+    mut tiles: Query<(
+        &mut Transform,
+        &Position,
+        Changed<Position>,
+    )>,
+    query_board: Query<&Board>,
+) {
+    let board = query_board
+        .single()
+        .expect("expect there to be a board");
+    for (mut transform, pos, pos_changed) in
+        tiles.iter_mut()
+    {
+        if pos_changed {
+            transform.translation.x =
+                board.cell_position_to_physical(pos.x);
+            transform.translation.y =
+                board.cell_position_to_physical(pos.y);
+        }
     }
 }
