@@ -88,6 +88,69 @@ enum BoardShift {
     Up,
     Down,
 }
+impl BoardShift {
+    fn sort(&self, a: &Position, b: &Position) -> Ordering {
+        match self {
+            BoardShift::Left => {
+                match Ord::cmp(&a.y, &b.y) {
+                    Ordering::Equal => Ord::cmp(&a.x, &b.x),
+                    ordering => ordering,
+                }
+            }
+            BoardShift::Right => {
+                match Ord::cmp(&b.y, &a.y) {
+                    std::cmp::Ordering::Equal => {
+                        Ord::cmp(&b.x, &a.x)
+                    }
+                    a => a,
+                }
+            }
+            BoardShift::Up => match Ord::cmp(&b.x, &a.x) {
+                std::cmp::Ordering::Equal => {
+                    Ord::cmp(&b.y, &a.y)
+                }
+                ordering => ordering,
+            },
+            BoardShift::Down => {
+                match Ord::cmp(&a.x, &b.x) {
+                    std::cmp::Ordering::Equal => {
+                        Ord::cmp(&a.y, &b.y)
+                    }
+                    ordering => ordering,
+                }
+            }
+        }
+    }
+    fn set_column_position(
+        &self,
+        board_size: u8,
+        position: &mut Mut<Position>,
+        index: u8,
+    ) {
+        match self {
+            BoardShift::Left => {
+                position.x = index;
+            }
+            BoardShift::Right => {
+                position.x = board_size - 1 - index
+            }
+            BoardShift::Up => {
+                position.y = board_size - 1 - index
+            }
+            BoardShift::Down => {
+                position.y = index;
+            }
+        }
+    }
+    fn get_row_position(&self, position: &Position) -> u8 {
+        match self {
+            BoardShift::Left | BoardShift::Right => {
+                position.y
+            }
+            BoardShift::Up | BoardShift::Down => position.x,
+        }
+    }
+}
 impl TryFrom<&KeyCode> for BoardShift {
     type Error = &'static str;
 
@@ -245,86 +308,78 @@ fn render_tile_points(
 }
 
 fn board_shift(
+    query_board: Query<&Board>,
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     mut tiles: Query<(Entity, &mut Position, &mut Points)>,
 ) {
+    let board = query_board
+        .single()
+        .expect("expect there to be a board");
+
     let shift_direction =
         keyboard_input.get_just_pressed().find_map(
             |key_code| BoardShift::try_from(key_code).ok(),
         );
 
-    match shift_direction {
-        Some(BoardShift::Left) => {
-            let mut it = tiles
-                .iter_mut()
-                .sorted_by(|a, b| {
-                    match Ord::cmp(&a.1.y, &b.1.y) {
-                        Ordering::Equal => {
-                            Ord::cmp(&a.1.x, &b.1.x)
-                        }
-                        ordering => ordering,
-                    }
-                })
-                .peekable();
-            let mut column: u8 = 0;
+    if let Some(board_shift) = shift_direction {
+        let mut it = tiles
+            .iter_mut()
+            .sorted_by(|a, b| board_shift.sort(&a.1, &b.1))
+            .peekable();
+        let mut column: u8 = 0;
 
-            while let Some(mut tile) = it.next() {
-                tile.1.x = column;
+        while let Some(mut tile) = it.next() {
+            board_shift.set_column_position(
+                board.size,
+                &mut tile.1,
+                column,
+            );
 
-                match it.peek() {
-                    None => {}
-                    Some(tile_next) => {
-                        if tile.1.y != tile_next.1.y {
-                            // different rows, don't merge
-                            column = 0;
-                        } else if tile.2.value
-                            != tile_next.2.value
-                        {
-                            // different values, don't merge
-                            column = column + 1;
-                        } else {
-                            // merge
-                            // despawn the next tile, and
-                            // merge it with the current
-                            // tile.
-                            let real_next_tile = it.next()
+            if let Some(tile_next) = it.peek() {
+                if board_shift.get_row_position(&tile.1)
+                    != board_shift
+                        .get_row_position(&tile_next.1)
+                {
+                    // different rows, don't merge
+                    column = 0;
+                } else if tile.2.value != tile_next.2.value
+                {
+                    // different values, don't merge
+                    column = column + 1;
+                } else {
+                    // merge
+                    // despawn the next tile, and
+                    // merge it with the current
+                    // tile.
+                    let real_next_tile = it.next()
                                     .expect("A peeked tile should always exist when we .next here");
-                            tile.2.value = tile.2.value
-                                + real_next_tile.2.value;
+                    tile.2.value = tile.2.value
+                        + real_next_tile.2.value;
 
-                            commands
-                                .entity(real_next_tile.0)
-                                .despawn_recursive();
+                    commands
+                        .entity(real_next_tile.0)
+                        .despawn_recursive();
 
-                            // if the next, next tile
-                            // (tile #3 of 3)
-                            // isn't in the same row, reset
-                            // x
-                            // otherwise increment by one
-                            if let Some(future) = it.peek()
-                            {
-                                if tile.1.y != future.1.y {
-                                    column = 0;
-                                } else {
-                                    column = column + 1;
-                                }
-                            }
+                    // if the next, next tile
+                    // (tile #3 of 3)
+                    // isn't in the same row, reset
+                    // x
+                    // otherwise increment by one
+                    if let Some(future) = it.peek() {
+                        if board_shift
+                            .get_row_position(&tile.1)
+                            != board_shift
+                                .get_row_position(&future.1)
+                        {
+                            column = 0;
+                        } else {
+                            column = column + 1;
                         }
                     }
                 }
             }
         }
-        Some(BoardShift::Right) => {
-            dbg!("right");
-        }
-        Some(BoardShift::Up) => {
-            dbg!("up");
-        }
-        Some(BoardShift::Down) => {
-            dbg!("down");
-        }
-        None => (),
     }
 }
 
