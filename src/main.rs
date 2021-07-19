@@ -4,6 +4,9 @@ use bevy::prelude::*;
 use itertools::Itertools;
 use rand::prelude::*;
 
+mod ui;
+use ui::*;
+
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
 
@@ -50,6 +53,7 @@ struct Materials {
     board: Handle<ColorMaterial>,
     tile_placeholder: Handle<ColorMaterial>,
     tile: Handle<ColorMaterial>,
+    none: Handle<ColorMaterial>,
 }
 
 impl FromWorld for Materials {
@@ -64,6 +68,7 @@ impl FromWorld for Materials {
                 .add(Color::rgb(0.75, 0.75, 0.9).into()),
             tile: materials
                 .add(Color::rgb(0.9, 0.9, 1.0).into()),
+            none: materials.add(Color::NONE.into()),
         }
     }
 }
@@ -180,6 +185,7 @@ fn main() {
         .init_resource::<Materials>()
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
+        .add_plugin(GameUiPlugin)
         .add_startup_system(setup.system())
         .add_startup_system(spawn_board.system())
         .add_startup_system_to_stage(
