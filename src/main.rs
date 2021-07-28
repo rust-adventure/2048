@@ -184,6 +184,12 @@ struct Game {
     score: u32,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+enum RunState {
+    Playing,
+    GameOver,
+}
+
 fn main() {
     App::build()
         .add_plugins(DefaultPlugins)
@@ -197,11 +203,15 @@ fn main() {
             StartupStage::PostStartup,
             spawn_tiles.system(),
         )
-        .add_system(render_tile_points.system())
-        .add_system(board_shift.system())
-        .add_system(render_tiles.system())
-        .add_system(new_tile_handler.system())
-        .add_system(end_game.system())
+        .add_state(RunState::Playing)
+        .add_system_set(
+            SystemSet::on_update(RunState::Playing)
+                .with_system(render_tile_points.system())
+                .with_system(board_shift.system())
+                .with_system(render_tiles.system())
+                .with_system(new_tile_handler.system())
+                .with_system(end_game.system()),
+        )
         .add_event::<NewTileEvent>()
         .run()
 }
@@ -494,6 +504,7 @@ fn spawn_tile(
 fn end_game(
     tiles: Query<(&Position, &Points)>,
     query_board: Query<&Board>,
+    mut run_state: ResMut<State<RunState>>,
 ) {
     let board = query_board
         .single()
@@ -532,6 +543,7 @@ fn end_game(
 
         if has_move == false {
             dbg!("game over!");
+            run_state.set(RunState::GameOver).unwrap();
         }
     };
 }
