@@ -199,10 +199,6 @@ fn main() {
         .add_plugin(GameUiPlugin)
         .add_startup_system(setup.system())
         .add_startup_system(spawn_board.system())
-        .add_startup_system_to_stage(
-            StartupStage::PostStartup,
-            spawn_tiles.system(),
-        )
         .add_state(RunState::Playing)
         .add_system_set(
             SystemSet::on_update(RunState::Playing)
@@ -211,6 +207,11 @@ fn main() {
                 .with_system(render_tiles.system())
                 .with_system(new_tile_handler.system())
                 .with_system(end_game.system()),
+        )
+        .add_system_set(
+            SystemSet::on_enter(RunState::Playing)
+                .with_system(game_reset.system())
+                .with_system(spawn_tiles.system()),
         )
         .add_event::<NewTileEvent>()
         .run()
@@ -546,4 +547,15 @@ fn end_game(
             run_state.set(RunState::GameOver).unwrap();
         }
     };
+}
+
+fn game_reset(
+    mut commands: Commands,
+    tiles: Query<Entity, With<Position>>,
+    mut game: ResMut<Game>,
+) {
+    for entity in tiles.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    game.score = 0;
 }
