@@ -12,12 +12,15 @@ use rand::prelude::*;
 
 mod ui;
 use ui::*;
+mod colors;
+use colors::*;
 
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
 
 struct NewTileEvent;
 
+#[derive(Component)]
 struct Board {
     size: u8,
     physical_size: f32,
@@ -42,42 +45,21 @@ impl Board {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Component)]
 struct Points {
     value: u32,
 }
 
-#[derive(Debug, PartialEq, Copy, Clone, Eq, Hash)]
+#[derive(
+    Debug, PartialEq, Copy, Clone, Eq, Hash, Component,
+)]
 struct Position {
     x: u8,
     y: u8,
 }
 
+#[derive(Component)]
 pub struct TileText;
-
-struct Materials {
-    board: Handle<ColorMaterial>,
-    tile_placeholder: Handle<ColorMaterial>,
-    tile: Handle<ColorMaterial>,
-    none: Handle<ColorMaterial>,
-}
-
-impl FromWorld for Materials {
-    fn from_world(world: &mut World) -> Self {
-        let mut materials = world
-            .get_resource_mut::<Assets<ColorMaterial>>()
-            .unwrap();
-        Materials {
-            board: materials
-                .add(Color::rgb(0.7, 0.7, 0.8).into()),
-            tile_placeholder: materials
-                .add(Color::rgb(0.75, 0.75, 0.9).into()),
-            tile: materials
-                .add(Color::rgb(0.9, 0.9, 1.0).into()),
-            none: materials.add(Color::NONE.into()),
-        }
-    }
-}
 
 struct FontSpec {
     family: Handle<Font>,
@@ -193,23 +175,22 @@ enum RunState {
 }
 
 fn main() {
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
-        .init_resource::<Materials>()
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
         .add_plugin(EasingsPlugin)
         .add_plugin(GameUiPlugin)
-        .add_startup_system(setup.system())
-        .add_startup_system(spawn_board.system())
+        .add_startup_system(setup)
+        .add_startup_system(spawn_board)
         .add_state(RunState::Playing)
         .add_system_set(
             SystemSet::on_update(RunState::Playing)
-                .with_system(render_tile_points.system())
-                .with_system(board_shift.system())
-                .with_system(render_tiles.system())
-                .with_system(new_tile_handler.system())
-                .with_system(end_game.system()),
+                .with_system(render_tile_points)
+                .with_system(board_shift)
+                .with_system(render_tiles)
+                .with_system(new_tile_handler)
+                .with_system(end_game),
         )
         .add_system_set(
             SystemSet::on_enter(RunState::Playing)
@@ -225,19 +206,19 @@ fn setup(mut commands: Commands) {
         .spawn_bundle(OrthographicCameraBundle::new_2d());
 }
 
-fn spawn_board(
-    mut commands: Commands,
-    materials: Res<Materials>,
-) {
+fn spawn_board(mut commands: Commands) {
     let board = Board::new(4);
 
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.board.clone(),
-            sprite: Sprite::new(Vec2::new(
-                board.physical_size,
-                board.physical_size,
-            )),
+            sprite: Sprite {
+                color: MATERIALS.board,
+                custom_size: Some(Vec2::new(
+                    board.physical_size,
+                    board.physical_size,
+                )),
+                ..Sprite::default()
+            },
             ..Default::default()
         })
         .with_children(|builder| {
@@ -245,12 +226,13 @@ fn spawn_board(
                 .cartesian_product(0..board.size)
             {
                 builder.spawn_bundle(SpriteBundle {
-                    material: materials
-                        .tile_placeholder
-                        .clone(),
-                    sprite: Sprite::new(Vec2::new(
-                        TILE_SIZE, TILE_SIZE,
-                    )),
+                    sprite: Sprite {
+                        color: MATERIALS.tile_placeholder,
+                        custom_size: Some(Vec2::new(
+                            TILE_SIZE, TILE_SIZE,
+                        )),
+                        ..Sprite::default()
+                    },
                     transform: Transform::from_xyz(
                         board.cell_position_to_physical(
                             tile.0,
@@ -269,13 +251,10 @@ fn spawn_board(
 
 fn spawn_tiles(
     mut commands: Commands,
-    materials: Res<Materials>,
     query_board: Query<&Board>,
     font_spec: Res<FontSpec>,
 ) {
-    let board = query_board
-        .single()
-        .expect("always expect a board");
+    let board = query_board.single();
 
     let mut rng = rand::thread_rng();
     let starting_tiles: Vec<(u8, u8)> = (0..board.size)
@@ -283,13 +262,7 @@ fn spawn_tiles(
         .choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.iter() {
         let pos = Position { x: *x, y: *y };
-        spawn_tile(
-            &mut commands,
-            &materials,
-            board,
-            &font_spec,
-            pos,
-        );
+        spawn_tile(&mut commands, board, &font_spec, pos);
     }
 }
 
@@ -316,9 +289,7 @@ fn board_shift(
     mut tile_writer: EventWriter<NewTileEvent>,
     mut game: ResMut<Game>,
 ) {
-    let board = query_board
-        .single()
-        .expect("expect there to be a board");
+    let board = query_board.single();
 
     let shift_direction =
         keyboard_input.get_just_pressed().find_map(
@@ -400,9 +371,7 @@ fn render_tiles(
     >,
     query_board: Query<&Board>,
 ) {
-    let board = query_board
-        .single()
-        .expect("expect there to be a board");
+    let board = query_board.single();
     for (entity, transform, pos) in tiles.iter() {
         let x = board.cell_position_to_physical(pos.x);
         let y = board.cell_position_to_physical(pos.y);
@@ -426,13 +395,10 @@ fn new_tile_handler(
     mut tile_reader: EventReader<NewTileEvent>,
     mut commands: Commands,
     query_board: Query<&Board>,
-    materials: Res<Materials>,
     tiles: Query<&Position>,
     font_spec: Res<FontSpec>,
 ) {
-    let board = query_board
-        .single()
-        .expect("expect there to always be a board");
+    let board = query_board.single();
 
     for _event in tile_reader.iter() {
         // insert new tile
@@ -458,7 +424,6 @@ fn new_tile_handler(
         if let Some(pos) = possible_position {
             spawn_tile(
                 &mut commands,
-                &materials,
                 board,
                 &font_spec,
                 pos,
@@ -469,21 +434,23 @@ fn new_tile_handler(
 
 fn spawn_tile(
     commands: &mut Commands,
-    materials: &Res<Materials>,
     board: &Board,
     font_spec: &Res<FontSpec>,
     pos: Position,
 ) {
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.tile.clone(),
-            sprite: Sprite::new(Vec2::new(
-                TILE_SIZE, TILE_SIZE,
-            )),
+            sprite: Sprite {
+                color: MATERIALS.tile,
+                custom_size: Some(Vec2::new(
+                    TILE_SIZE, TILE_SIZE,
+                )),
+                ..Sprite::default()
+            },
             transform: Transform::from_xyz(
                 board.cell_position_to_physical(pos.x),
                 board.cell_position_to_physical(pos.y),
-                1.0,
+                2.0,
             ),
             ..Default::default()
         })
@@ -520,9 +487,7 @@ fn end_game(
     query_board: Query<&Board>,
     mut run_state: ResMut<State<RunState>>,
 ) {
-    let board = query_board
-        .single()
-        .expect("expect there to be a board");
+    let board = query_board.single();
 
     if tiles.iter().len() == 16 {
         let map: HashMap<&Position, &Points> =

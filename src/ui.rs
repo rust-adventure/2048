@@ -1,24 +1,26 @@
-use crate::{FontSpec, Game, Materials, RunState};
+use crate::colors::{BUTTON_MATERIALS, MATERIALS};
+use crate::{FontSpec, Game, RunState};
 use bevy::prelude::*;
 
+#[derive(Component)]
 pub struct ScoreDisplay;
+
+#[derive(Component)]
 pub struct BestScoreDisplay;
 
 pub struct GameUiPlugin;
 
 impl Plugin for GameUiPlugin {
-    fn build(&self, app: &mut AppBuilder) {
-        app.init_resource::<ButtonMaterials>()
-            .add_startup_system(setup_ui.system())
-            .add_system(scoreboard.system())
-            .add_system(button_interaction_system.system())
-            .add_system(button_text_system.system());
+    fn build(&self, app: &mut App) {
+        app.add_startup_system(setup_ui)
+            .add_system(scoreboard)
+            .add_system(button_interaction_system)
+            .add_system(button_text_system);
     }
 }
 
 fn setup_ui(
     mut commands: Commands,
-    materials: Res<Materials>,
     font_spec: Res<FontSpec>,
 ) {
     commands.spawn_bundle(UiCameraBundle::default());
@@ -30,7 +32,7 @@ fn setup_ui(
                 padding: Rect::all(Val::Px(50.0)),
                 ..Default::default()
             },
-            material: materials.none.clone(),
+            color: UiColor(MATERIALS.none),
             ..Default::default()
         })
         .with_children(|parent| {
@@ -54,7 +56,7 @@ fn setup_ui(
                         size: Size::new(Val::Percent(100.0), Val::Auto),
                         ..Default::default()
                     },
-                    material: materials.none.clone(),
+                    color: UiColor(MATERIALS.none),
                     ..Default::default()
                 })
                 .with_children(|parent| {
@@ -73,7 +75,7 @@ fn setup_ui(
                                 padding: Rect::all(Val::Px(10.0)),
                                 ..Default::default()
                             },
-                            material: materials.tile_placeholder.clone(),
+                            color: UiColor(MATERIALS.tile_placeholder),
                             ..Default::default()
                         })
                         .with_children(|parent| {
@@ -120,7 +122,7 @@ fn setup_ui(
                                 padding: Rect::all(Val::Px(10.0)),
                                 ..Default::default()
                             },
-                            material: materials.tile_placeholder.clone(),
+                            color: UiColor(MATERIALS.tile_placeholder),
                             ..Default::default()
                         })
                         .with_children(|parent| {
@@ -189,56 +191,32 @@ fn setup_ui(
 fn scoreboard(
     game: Res<Game>,
     mut query_scores: QuerySet<(
-        Query<&mut Text, With<ScoreDisplay>>,
-        Query<&mut Text, With<BestScoreDisplay>>,
+        QueryState<&mut Text, With<ScoreDisplay>>,
+        QueryState<&mut Text, With<BestScoreDisplay>>,
     )>,
 ) {
-    let mut text =
-        query_scores.q0_mut().single_mut().unwrap();
+    let mut q0 = query_scores.q0();
+    let mut text = q0.single_mut();
     text.sections[0].value = game.score.to_string();
 
-    let mut text =
-        query_scores.q1_mut().single_mut().unwrap();
+    let mut q1 = query_scores.q1();
+    let mut text = q1.single_mut();
     text.sections[0].value = game.score_best.to_string();
 }
 
-struct ButtonMaterials {
-    normal: Handle<ColorMaterial>,
-    hovered: Handle<ColorMaterial>,
-    pressed: Handle<ColorMaterial>,
-}
-
-impl FromWorld for ButtonMaterials {
-    fn from_world(world: &mut World) -> Self {
-        let mut materials = world
-            .get_resource_mut::<Assets<ColorMaterial>>()
-            .unwrap();
-        ButtonMaterials {
-            normal: materials
-                .add(Color::rgb(0.75, 0.75, 0.9).into()),
-            hovered: materials
-                .add(Color::rgb(0.7, 0.7, 0.9).into()),
-            pressed: materials
-                .add(Color::rgb(0.6, 0.6, 1.0).into()),
-        }
-    }
-}
-
 fn button_interaction_system(
-    button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
-        (&Interaction, &mut Handle<ColorMaterial>),
+        (&Interaction, &mut UiColor),
         (Changed<Interaction>, With<Button>),
     >,
     mut run_state: ResMut<State<RunState>>,
 ) {
-    for (interaction, mut material) in
+    for (interaction, mut color) in
         interaction_query.iter_mut()
     {
         match interaction {
             Interaction::Clicked => {
-                *material =
-                    button_materials.pressed.clone();
+                *color = BUTTON_MATERIALS.pressed.into();
 
                 match run_state.current() {
                     RunState::Playing => {
@@ -254,11 +232,10 @@ fn button_interaction_system(
                 }
             }
             Interaction::Hovered => {
-                *material =
-                    button_materials.hovered.clone();
+                *color = BUTTON_MATERIALS.hovered.into();
             }
             Interaction::None => {
-                *material = button_materials.normal.clone();
+                *color = BUTTON_MATERIALS.normal.into();
             }
         }
     }
@@ -269,9 +246,7 @@ fn button_text_system(
     mut text_query: Query<&mut Text>,
     run_state: Res<State<RunState>>,
 ) {
-    let children = button_query
-        .single()
-        .expect("expected only one button");
+    let children = button_query.single();
     let mut text =
         text_query
             .get_mut(*children.first().expect(
