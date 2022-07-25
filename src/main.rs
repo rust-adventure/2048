@@ -6,7 +6,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_easings::*;
+// use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
 
@@ -179,7 +179,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
-        .add_plugin(EasingsPlugin)
+        // .add_plugin(EasingsPlugin)
         .add_plugin(GameUiPlugin)
         .add_startup_system(setup)
         .add_startup_system(spawn_board)
@@ -194,16 +194,15 @@ fn main() {
         )
         .add_system_set(
             SystemSet::on_enter(RunState::Playing)
-                .with_system(game_reset.system())
-                .with_system(spawn_tiles.system()),
+                .with_system(game_reset)
+                .with_system(spawn_tiles),
         )
         .add_event::<NewTileEvent>()
         .run()
 }
 
 fn setup(mut commands: Commands) {
-    commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 }
 
 fn spawn_board(mut commands: Commands) {
@@ -365,29 +364,34 @@ fn board_shift(
 
 fn render_tiles(
     mut commands: Commands,
-    tiles: Query<
-        (Entity, &Transform, &Position),
+    mut tiles: Query<
+        (Entity, &mut Transform, &Position),
         Changed<Position>,
     >,
     query_board: Query<&Board>,
 ) {
     let board = query_board.single();
-    for (entity, transform, pos) in tiles.iter() {
+    for (entity, mut transform, pos) in tiles.iter_mut() {
         let x = board.cell_position_to_physical(pos.x);
         let y = board.cell_position_to_physical(pos.y);
-        commands.entity(entity).insert(transform.ease_to(
-            Transform::from_xyz(
-                x,
-                y,
-                transform.translation.z,
-            ),
-            EaseFunction::QuadraticInOut,
-            EasingType::Once {
-                duration: std::time::Duration::from_millis(
-                    100,
-                ),
-            },
-        ));
+        // commands.entity(entity).insert(transform.ease_to(
+        //     Transform::from_xyz(
+        //         x,
+        //         y,
+        //         transform.translation.z,
+        //     ),
+        //     EaseFunction::QuadraticInOut,
+        //     EasingType::Once {
+        //         duration: std::time::Duration::from_millis(
+        //             100,
+        //         ),
+        //     },
+        // ));
+        *transform = Transform::from_xyz(
+            x,
+            y,
+            transform.translation.z,
+        )
     }
 }
 
@@ -457,7 +461,7 @@ fn spawn_tile(
         .with_children(|child_builder| {
             child_builder
                 .spawn_bundle(Text2dBundle {
-                    text: Text::with_section(
+                    text: Text::from_section(
                         "2",
                         TextStyle {
                             font: font_spec.family.clone(),
@@ -465,12 +469,11 @@ fn spawn_tile(
                             color: Color::BLACK,
                             ..Default::default()
                         },
-                        TextAlignment {
-                            vertical: VerticalAlign::Center,
-                            horizontal:
-                                HorizontalAlign::Center,
-                        },
-                    ),
+                    )
+                    .with_alignment(TextAlignment {
+                        vertical: VerticalAlign::Center,
+                        horizontal: HorizontalAlign::Center,
+                    }),
                     transform: Transform::from_xyz(
                         0.0, 0.0, 1.0,
                     ),

@@ -23,13 +23,12 @@ fn setup_ui(
     mut commands: Commands,
     font_spec: Res<FontSpec>,
 ) {
-    commands.spawn_bundle(UiCameraBundle::default());
     commands
         .spawn_bundle(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 align_items: AlignItems::FlexEnd,
-                padding: Rect::all(Val::Px(50.0)),
+                padding: UiRect::all(Val::Px(50.0)),
                 ..Default::default()
             },
             color: UiColor(MATERIALS.none),
@@ -37,13 +36,13 @@ fn setup_ui(
         })
         .with_children(|parent| {
             parent.spawn_bundle(TextBundle {
-                text: Text::with_section(
+                text: Text::from_section(
                     "2048",
                     TextStyle {
                         font: font_spec.family.clone(),
                         font_size: 40.0,
                         color: Color::WHITE,
-                    },
+                    }).with_alignment(
                     TextAlignment::default(),
                 ),
                 ..Default::default()
@@ -66,13 +65,13 @@ fn setup_ui(
                             style: Style {
                                 flex_direction: FlexDirection::ColumnReverse,
                                 align_items: AlignItems::Center,
-                                margin: Rect {
+                                margin: UiRect {
                                     left: Val::Px(20.0),
                                     right: Val::Px(20.0),
                                     top: Val::Px(0.0),
                                     bottom: Val::Px(0.0),
                                 },
-                                padding: Rect::all(Val::Px(10.0)),
+                                padding: UiRect::all(Val::Px(10.0)),
                                 ..Default::default()
                             },
                             color: UiColor(MATERIALS.tile_placeholder),
@@ -80,13 +79,13 @@ fn setup_ui(
                         })
                         .with_children(|parent| {
                             parent.spawn_bundle(TextBundle {
-                                text: Text::with_section(
+                                text: Text::from_section(
                                     "Score",
                                     TextStyle {
                                         font: font_spec.family.clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
-                                    },
+                                    }).with_alignment(
                                     TextAlignment {
                                         vertical: VerticalAlign::Center,
                                         horizontal: HorizontalAlign::Center,
@@ -96,13 +95,13 @@ fn setup_ui(
                             });
                             parent
                                 .spawn_bundle(TextBundle {
-                                    text: Text::with_section(
+                                    text: Text::from_section(
                                         "<score>",
                                         TextStyle {
                                             font: font_spec.family.clone(),
                                             font_size: 20.0,
                                             color: Color::WHITE,
-                                        },
+                                        }).with_alignment(
                                         TextAlignment {
                                             vertical: VerticalAlign::Center,
                                             horizontal: HorizontalAlign::Center,
@@ -119,7 +118,7 @@ fn setup_ui(
                             style: Style {
                                 flex_direction: FlexDirection::ColumnReverse,
                                 align_items: AlignItems::Center,
-                                padding: Rect::all(Val::Px(10.0)),
+                                padding: UiRect::all(Val::Px(10.0)),
                                 ..Default::default()
                             },
                             color: UiColor(MATERIALS.tile_placeholder),
@@ -127,13 +126,13 @@ fn setup_ui(
                         })
                         .with_children(|parent| {
                             parent.spawn_bundle(TextBundle {
-                                text: Text::with_section(
+                                text: Text::from_section(
                                     "Best",
                                     TextStyle {
                                         font: font_spec.family.clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
-                                    },
+                                    }).with_alignment(
                                     TextAlignment {
                                         vertical: VerticalAlign::Center,
                                         horizontal: HorizontalAlign::Center,
@@ -143,13 +142,13 @@ fn setup_ui(
                             });
                             parent
                                 .spawn_bundle(TextBundle {
-                                    text: Text::with_section(
+                                    text: Text::from_section(
                                         "<score>",
                                         TextStyle {
                                             font: font_spec.family.clone(),
                                             font_size: 20.0,
                                             color: Color::WHITE,
-                                        },
+                                        }).with_alignment(
                                         TextAlignment {
                                             vertical: VerticalAlign::Center,
                                             horizontal: HorizontalAlign::Center,
@@ -173,15 +172,13 @@ fn setup_ui(
                 })
                 .with_children(|parent| {
                     parent.spawn_bundle(TextBundle {
-                        text: Text::with_section(
+                        text: Text::from_section(
                             "Button",
                             TextStyle {
                                 font: font_spec.family.clone(),
                                 font_size: 20.0,
                                 color: Color::rgb(0.9, 0.9, 0.9),
-                            },
-                            Default::default(),
-                        ),
+                            }),
                         ..Default::default()
                     });
                 });
@@ -190,17 +187,17 @@ fn setup_ui(
 
 fn scoreboard(
     game: Res<Game>,
-    mut query_scores: QuerySet<(
-        QueryState<&mut Text, With<ScoreDisplay>>,
-        QueryState<&mut Text, With<BestScoreDisplay>>,
+    mut query_scores: ParamSet<(
+        Query<&mut Text, With<ScoreDisplay>>,
+        Query<&mut Text, With<BestScoreDisplay>>,
     )>,
 ) {
-    let mut q0 = query_scores.q0();
-    let mut text = q0.single_mut();
+    let mut p0 = query_scores.p0();
+    let mut text = p0.single_mut();
     text.sections[0].value = game.score.to_string();
 
-    let mut q1 = query_scores.q1();
-    let mut text = q1.single_mut();
+    let mut p1 = query_scores.p1();
+    let mut text = p1.single_mut();
     text.sections[0].value = game.score_best.to_string();
 }
 
