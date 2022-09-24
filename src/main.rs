@@ -61,6 +61,7 @@ struct Position {
 #[derive(Component)]
 pub struct TileText;
 
+#[derive(Resource)]
 struct FontSpec {
     family: Handle<Font>,
 }
@@ -162,7 +163,7 @@ impl TryFrom<&KeyCode> for BoardShift {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct Game {
     score: u32,
     score_best: u32,
@@ -202,14 +203,14 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 }
 
 fn spawn_board(mut commands: Commands) {
     let board = Board::new(4);
 
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 color: MATERIALS.board,
                 custom_size: Some(Vec2::new(
@@ -224,7 +225,7 @@ fn spawn_board(mut commands: Commands) {
             for tile in (0..board.size)
                 .cartesian_product(0..board.size)
             {
-                builder.spawn_bundle(SpriteBundle {
+                builder.spawn(SpriteBundle {
                     sprite: Sprite {
                         color: MATERIALS.tile_placeholder,
                         custom_size: Some(Vec2::new(
@@ -443,7 +444,7 @@ fn spawn_tile(
     pos: Position,
 ) {
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 color: MATERIALS.tile,
                 custom_size: Some(Vec2::new(
@@ -460,7 +461,7 @@ fn spawn_tile(
         })
         .with_children(|child_builder| {
             child_builder
-                .spawn_bundle(Text2dBundle {
+                .spawn(Text2dBundle {
                     text: Text::from_section(
                         "2",
                         TextStyle {

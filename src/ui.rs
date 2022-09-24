@@ -24,7 +24,7 @@ fn setup_ui(
     font_spec: Res<FontSpec>,
 ) {
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 align_items: AlignItems::FlexEnd,
@@ -35,7 +35,7 @@ fn setup_ui(
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn_bundle(TextBundle {
+            parent.spawn(TextBundle {
                 text: Text::from_section(
                     "2048",
                     TextStyle {
@@ -49,7 +49,7 @@ fn setup_ui(
             });
 
             parent
-                .spawn_bundle(NodeBundle {
+                .spawn(NodeBundle {
                     style: Style {
                         justify_content: JustifyContent::Center,
                         size: Size::new(Val::Percent(100.0), Val::Auto),
@@ -61,7 +61,7 @@ fn setup_ui(
                 .with_children(|parent| {
                     // scorebox
                     parent
-                        .spawn_bundle(NodeBundle {
+                        .spawn(NodeBundle {
                             style: Style {
                                 flex_direction: FlexDirection::ColumnReverse,
                                 align_items: AlignItems::Center,
@@ -78,7 +78,7 @@ fn setup_ui(
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn_bundle(TextBundle {
+                            parent.spawn(TextBundle {
                                 text: Text::from_section(
                                     "Score",
                                     TextStyle {
@@ -94,7 +94,7 @@ fn setup_ui(
                                 ..Default::default()
                             });
                             parent
-                                .spawn_bundle(TextBundle {
+                                .spawn(TextBundle {
                                     text: Text::from_section(
                                         "<score>",
                                         TextStyle {
@@ -114,7 +114,7 @@ fn setup_ui(
                     // end scorebox
                     // best scorebox
                     parent
-                        .spawn_bundle(NodeBundle {
+                        .spawn(NodeBundle {
                             style: Style {
                                 flex_direction: FlexDirection::ColumnReverse,
                                 align_items: AlignItems::Center,
@@ -125,7 +125,7 @@ fn setup_ui(
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn_bundle(TextBundle {
+                            parent.spawn(TextBundle {
                                 text: Text::from_section(
                                     "Best",
                                     TextStyle {
@@ -141,7 +141,7 @@ fn setup_ui(
                                 ..Default::default()
                             });
                             parent
-                                .spawn_bundle(TextBundle {
+                                .spawn(TextBundle {
                                     text: Text::from_section(
                                         "<score>",
                                         TextStyle {
@@ -161,7 +161,7 @@ fn setup_ui(
                     // end best scorebox
                 });
             parent
-                .spawn_bundle(ButtonBundle {
+                .spawn(ButtonBundle {
                     style: Style {
                         size: Size::new(Val::Px(100.0), Val::Px(30.0)),
                         justify_content: JustifyContent::Center,
@@ -171,7 +171,7 @@ fn setup_ui(
                     ..Default::default()
                 })
                 .with_children(|parent| {
-                    parent.spawn_bundle(TextBundle {
+                    parent.spawn(TextBundle {
                         text: Text::from_section(
                             "Button",
                             TextStyle {
