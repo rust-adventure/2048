@@ -27,7 +27,7 @@ fn setup_ui(
         .spawn(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                align_items: AlignItems::FlexEnd,
+                align_items: AlignItems::FlexStart,
                 padding: UiRect::all(Val::Px(50.0)),
                 ..Default::default()
             },
