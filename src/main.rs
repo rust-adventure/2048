@@ -6,7 +6,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-// use bevy_easings::*;
+use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
 
@@ -180,7 +180,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
-        // .add_plugin(EasingsPlugin)
+        .add_plugin(EasingsPlugin)
         .add_plugin(GameUiPlugin)
         .add_startup_system(setup)
         .add_startup_system(spawn_board)
@@ -320,7 +320,7 @@ fn board_shift(
                 } else if tile.2.value != tile_next.2.value
                 {
                     // different values, don't merge
-                    column = column + 1;
+                    column += 1;
                 } else {
                     // merge
                     // despawn the next tile, and
@@ -328,8 +328,7 @@ fn board_shift(
                     // tile.
                     let real_next_tile = it.next()
                                     .expect("A peeked tile should always exist when we .next here");
-                    tile.2.value = tile.2.value
-                        + real_next_tile.2.value;
+                    tile.2.value += real_next_tile.2.value;
 
                     game.score += tile.2.value;
 
@@ -350,7 +349,7 @@ fn board_shift(
                         {
                             column = 0;
                         } else {
-                            column = column + 1;
+                            column += 1;
                         }
                     }
                 }
@@ -372,27 +371,22 @@ fn render_tiles(
     query_board: Query<&Board>,
 ) {
     let board = query_board.single();
-    for (entity, mut transform, pos) in tiles.iter_mut() {
+    for (entity, transform, pos) in tiles.iter_mut() {
         let x = board.cell_position_to_physical(pos.x);
         let y = board.cell_position_to_physical(pos.y);
-        // commands.entity(entity).insert(transform.ease_to(
-        //     Transform::from_xyz(
-        //         x,
-        //         y,
-        //         transform.translation.z,
-        //     ),
-        //     EaseFunction::QuadraticInOut,
-        //     EasingType::Once {
-        //         duration: std::time::Duration::from_millis(
-        //             100,
-        //         ),
-        //     },
-        // ));
-        *transform = Transform::from_xyz(
-            x,
-            y,
-            transform.translation.z,
-        )
+        commands.entity(entity).insert(transform.ease_to(
+            Transform::from_xyz(
+                x,
+                y,
+                transform.translation.z,
+            ),
+            EaseFunction::QuadraticInOut,
+            EasingType::Once {
+                duration: std::time::Duration::from_millis(
+                    100,
+                ),
+            },
+        ));
     }
 }
 
@@ -468,7 +462,6 @@ fn spawn_tile(
                             font: font_spec.family.clone(),
                             font_size: 40.0,
                             color: Color::BLACK,
-                            ..Default::default()
                         },
                     )
                     .with_alignment(TextAlignment {
@@ -524,7 +517,7 @@ fn end_game(
             },
         );
 
-        if has_move == false {
+        if !has_move {
             dbg!("game over!");
             run_state.set(RunState::GameOver).unwrap();
         }

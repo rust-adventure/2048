@@ -31,7 +31,7 @@ fn setup_ui(
                 padding: UiRect::all(Val::Px(50.0)),
                 ..Default::default()
             },
-            color: UiColor(MATERIALS.none),
+            background_color: BackgroundColor(MATERIALS.none),
             ..Default::default()
         })
         .with_children(|parent| {
@@ -55,7 +55,7 @@ fn setup_ui(
                         size: Size::new(Val::Percent(100.0), Val::Auto),
                         ..Default::default()
                     },
-                    color: UiColor(MATERIALS.none),
+                    background_color: BackgroundColor(MATERIALS.none),
                     ..Default::default()
                 })
                 .with_children(|parent| {
@@ -74,7 +74,7 @@ fn setup_ui(
                                 padding: UiRect::all(Val::Px(10.0)),
                                 ..Default::default()
                             },
-                            color: UiColor(MATERIALS.tile_placeholder),
+                            background_color: BackgroundColor(MATERIALS.tile_placeholder),
                             ..Default::default()
                         })
                         .with_children(|parent| {
@@ -121,7 +121,7 @@ fn setup_ui(
                                 padding: UiRect::all(Val::Px(10.0)),
                                 ..Default::default()
                             },
-                            color: UiColor(MATERIALS.tile_placeholder),
+                            background_color: BackgroundColor(MATERIALS.tile_placeholder),
                             ..Default::default()
                         })
                         .with_children(|parent| {
@@ -203,7 +203,7 @@ fn scoreboard(
 
 fn button_interaction_system(
     mut interaction_query: Query<
-        (&Interaction, &mut UiColor),
+        (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
     mut run_state: ResMut<State<RunState>>,
