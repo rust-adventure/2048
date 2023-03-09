@@ -12,10 +12,11 @@ pub struct GameUiPlugin;
 
 impl Plugin for GameUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_ui)
-            .add_system(scoreboard)
-            .add_system(button_interaction_system)
-            .add_system(button_text_system);
+        app.add_startup_system(setup_ui).add_systems((
+            scoreboard,
+            button_interaction_system,
+            button_text_system,
+        ));
     }
 }
 
@@ -43,7 +44,6 @@ fn setup_ui(
                         font_size: 40.0,
                         color: Color::WHITE,
                     }),
-               
            );
 
             parent
@@ -96,7 +96,6 @@ fn setup_ui(
                                         }).with_text_alignment(
                                         TextAlignment::Center,
                                     ),
-                                
                                 ScoreDisplay));
                         });
                     // end scorebox
@@ -184,7 +183,7 @@ fn button_interaction_system(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
-     run_state: Res<State<RunState>>,
+    run_state: Res<State<RunState>>,
     mut next_state: ResMut<NextState<RunState>>,
 ) {
     for (interaction, mut color) in
