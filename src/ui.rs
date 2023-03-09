@@ -28,6 +28,7 @@ fn setup_ui(
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 align_items: AlignItems::FlexStart,
+                justify_content: JustifyContent::SpaceEvenly,
                 padding: UiRect::all(Val::Px(50.0)),
                 ..Default::default()
             },
@@ -35,24 +36,21 @@ fn setup_ui(
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text::from_section(
+            parent.spawn(TextBundle::from_section(
                     "2048",
                     TextStyle {
                         font: font_spec.family.clone(),
                         font_size: 40.0,
                         color: Color::WHITE,
-                    }).with_alignment(
-                    TextAlignment::default(),
-                ),
-                ..Default::default()
-            });
+                    }),
+               
+           );
 
             parent
                 .spawn(NodeBundle {
                     style: Style {
                         justify_content: JustifyContent::Center,
-                        size: Size::new(Val::Percent(100.0), Val::Auto),
+                        size: Size::new(Val::Auto, Val::Auto),
                         ..Default::default()
                     },
                     background_color: BackgroundColor(MATERIALS.none),
@@ -78,38 +76,28 @@ fn setup_ui(
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn(TextBundle {
-                                text: Text::from_section(
+                            parent.spawn(TextBundle::from_section(
                                     "Score",
                                     TextStyle {
                                         font: font_spec.family.clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
-                                    }).with_alignment(
-                                    TextAlignment {
-                                        vertical: VerticalAlign::Center,
-                                        horizontal: HorizontalAlign::Center,
-                                    },
-                                ),
-                                ..Default::default()
-                            });
+                                    }).with_text_alignment(
+                                    TextAlignment::Center,
+                                ))
+                            ;
                             parent
-                                .spawn(TextBundle {
-                                    text: Text::from_section(
+                                .spawn((TextBundle::from_section(
                                         "<score>",
                                         TextStyle {
                                             font: font_spec.family.clone(),
                                             font_size: 20.0,
                                             color: Color::WHITE,
-                                        }).with_alignment(
-                                        TextAlignment {
-                                            vertical: VerticalAlign::Center,
-                                            horizontal: HorizontalAlign::Center,
-                                        },
+                                        }).with_text_alignment(
+                                        TextAlignment::Center,
                                     ),
-                                    ..Default::default()
-                                })
-                                .insert(ScoreDisplay);
+                                
+                                ScoreDisplay));
                         });
                     // end scorebox
                     // best scorebox
@@ -125,41 +113,31 @@ fn setup_ui(
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn(TextBundle {
-                                text: Text::from_section(
+                            parent.spawn(TextBundle::from_section(
                                     "Best",
                                     TextStyle {
                                         font: font_spec.family.clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
-                                    }).with_alignment(
-                                    TextAlignment {
-                                        vertical: VerticalAlign::Center,
-                                        horizontal: HorizontalAlign::Center,
-                                    },
-                                ),
-                                ..Default::default()
-                            });
+                                    }).with_text_alignment(
+                                    TextAlignment::Center,
+                                ));
                             parent
-                                .spawn(TextBundle {
-                                    text: Text::from_section(
+                                .spawn((TextBundle::from_section(
                                         "<score>",
                                         TextStyle {
                                             font: font_spec.family.clone(),
                                             font_size: 20.0,
                                             color: Color::WHITE,
-                                        }).with_alignment(
-                                        TextAlignment {
-                                            vertical: VerticalAlign::Center,
-                                            horizontal: HorizontalAlign::Center,
-                                        },
+                                        }).with_text_alignment(
+                                        TextAlignment::Center
                                     ),
-                                    ..Default::default()
-                                })
-                                .insert(BestScoreDisplay);
+                                BestScoreDisplay
+                            ));
                         });
                     // end best scorebox
                 });
+
             parent
                 .spawn(ButtonBundle {
                     style: Style {
@@ -206,7 +184,8 @@ fn button_interaction_system(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
-    mut run_state: ResMut<State<RunState>>,
+     run_state: Res<State<RunState>>,
+    mut next_state: ResMut<NextState<RunState>>,
 ) {
     for (interaction, mut color) in
         interaction_query.iter_mut()
@@ -215,16 +194,12 @@ fn button_interaction_system(
             Interaction::Clicked => {
                 *color = BUTTON_MATERIALS.pressed.into();
 
-                match run_state.current() {
+                match run_state.0 {
                     RunState::Playing => {
-                        run_state
-                            .set(RunState::GameOver)
-                            .unwrap();
+                        next_state.set(RunState::GameOver);
                     }
                     RunState::GameOver => {
-                        run_state
-                            .set(RunState::Playing)
-                            .unwrap();
+                        next_state.set(RunState::Playing);
                     }
                 }
             }
@@ -250,7 +225,7 @@ fn button_text_system(
                 "expect button to have a first child",
             ))
             .unwrap();
-    match run_state.current() {
+    match run_state.0 {
         RunState::Playing => {
             text.sections[0].value = "End Game".to_string();
         }

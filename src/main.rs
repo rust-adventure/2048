@@ -169,8 +169,11 @@ struct Game {
     score_best: u32,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(
+    Default, Debug, Clone, Eq, PartialEq, Hash, States,
+)]
 enum RunState {
+    #[default]
     Playing,
     GameOver,
 }
@@ -182,21 +185,33 @@ fn main() {
         .init_resource::<Game>()
         .add_plugin(EasingsPlugin)
         .add_plugin(GameUiPlugin)
-        .add_startup_system(setup)
-        .add_startup_system(spawn_board)
-        .add_state(RunState::Playing)
-        .add_system_set(
-            SystemSet::on_update(RunState::Playing)
-                .with_system(render_tile_points)
-                .with_system(board_shift)
-                .with_system(render_tiles)
-                .with_system(new_tile_handler)
-                .with_system(end_game),
+        .add_state::<RunState>()
+        .add_startup_systems((setup, spawn_board).chain())
+        .add_system(
+            render_tile_points
+                .in_set(OnUpdate(RunState::Playing)),
         )
-        .add_system_set(
-            SystemSet::on_enter(RunState::Playing)
-                .with_system(game_reset)
-                .with_system(spawn_tiles),
+        .add_system(
+            board_shift.in_set(OnUpdate(RunState::Playing)),
+        )
+        .add_system(
+            render_tiles
+                .in_set(OnUpdate(RunState::Playing)),
+        )
+        .add_system(
+            new_tile_handler
+                .in_set(OnUpdate(RunState::Playing)),
+        )
+        .add_system(
+            end_game.in_set(OnUpdate(RunState::Playing)),
+        )
+        .add_system(
+            game_reset
+                .in_schedule(OnEnter(RunState::Playing)),
+        )
+        .add_system(
+            spawn_tiles
+                .in_schedule(OnEnter(RunState::Playing)),
         )
         .add_event::<NewTileEvent>()
         .run()
@@ -464,10 +479,7 @@ fn spawn_tile(
                             color: Color::BLACK,
                         },
                     )
-                    .with_alignment(TextAlignment {
-                        vertical: VerticalAlign::Center,
-                        horizontal: HorizontalAlign::Center,
-                    }),
+                    .with_alignment(TextAlignment::Center),
                     transform: Transform::from_xyz(
                         0.0, 0.0, 1.0,
                     ),
@@ -482,7 +494,7 @@ fn spawn_tile(
 fn end_game(
     tiles: Query<(&Position, &Points)>,
     query_board: Query<&Board>,
-    mut run_state: ResMut<State<RunState>>,
+    mut next_state: ResMut<NextState<RunState>>,
 ) {
     let board = query_board.single();
 
@@ -519,7 +531,7 @@ fn end_game(
 
         if !has_move {
             dbg!("game over!");
-            run_state.set(RunState::GameOver).unwrap();
+            next_state.set(RunState::GameOver);
         }
     };
 }
