@@ -187,32 +187,20 @@ fn main() {
         .add_plugin(GameUiPlugin)
         .add_state::<RunState>()
         .add_startup_systems((setup, spawn_board).chain())
-        .add_system(
+        .add_systems((
             render_tile_points
                 .in_set(OnUpdate(RunState::Playing)),
-        )
-        .add_system(
             board_shift.in_set(OnUpdate(RunState::Playing)),
-        )
-        .add_system(
             render_tiles
                 .in_set(OnUpdate(RunState::Playing)),
-        )
-        .add_system(
             new_tile_handler
                 .in_set(OnUpdate(RunState::Playing)),
-        )
-        .add_system(
             end_game.in_set(OnUpdate(RunState::Playing)),
-        )
-        .add_system(
             game_reset
                 .in_schedule(OnEnter(RunState::Playing)),
-        )
-        .add_system(
             spawn_tiles
                 .in_schedule(OnEnter(RunState::Playing)),
-        )
+        ))
         .add_event::<NewTileEvent>()
         .run()
 }
