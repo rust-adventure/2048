@@ -9,5 +9,10 @@ fn main() {
             }),
             ..default()
         }))
+        .add_startup_system(setup)
         .run()
+}
+
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
 }
