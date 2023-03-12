@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+mod colors;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -32,6 +34,7 @@ fn spawn_board(mut commands: Commands) {
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
+                color: colors::BOARD,
                 custom_size: Some(Vec2::new(
                     physical_board_size,
                     physical_board_size,
