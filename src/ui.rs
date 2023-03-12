@@ -2,6 +2,8 @@ use crate::colors::{BUTTON_MATERIALS, MATERIALS};
 use crate::{FontSpec, Game, RunState};
 use bevy::prelude::*;
 
+mod styles;
+
 #[derive(Component)]
 pub struct ScoreDisplay;
 
@@ -27,111 +29,128 @@ fn setup_ui(
     commands
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                size: Size::new(
+                    Val::Percent(100.0),
+                    Val::Percent(100.0),
+                ),
                 align_items: AlignItems::FlexStart,
-                justify_content: JustifyContent::SpaceEvenly,
+                justify_content:
+                    JustifyContent::SpaceBetween,
                 padding: UiRect::all(Val::Px(50.0)),
                 ..Default::default()
             },
-            background_color: BackgroundColor(MATERIALS.none),
+            background_color: BackgroundColor(
+                MATERIALS.none,
+            ),
             ..Default::default()
         })
         .with_children(|parent| {
             parent.spawn(TextBundle::from_section(
-                    "2048",
-                    TextStyle {
-                        font: font_spec.family.clone(),
-                        font_size: 40.0,
-                        color: Color::WHITE,
-                    }),
-           );
+                "2048",
+                TextStyle {
+                    font: font_spec.family.clone(),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                },
+            ));
 
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        justify_content: JustifyContent::Center,
-                        size: Size::new(Val::Auto, Val::Auto),
+                        justify_content:
+                            JustifyContent::Center,
+                        size: Size::AUTO,
+                        gap: Size::all(Val::Px(20.0)),
                         ..Default::default()
                     },
-                    background_color: BackgroundColor(MATERIALS.none),
                     ..Default::default()
                 })
                 .with_children(|parent| {
                     // scorebox
                     parent
                         .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::ColumnReverse,
-                                align_items: AlignItems::Center,
-                                margin: UiRect {
-                                    left: Val::Px(20.0),
-                                    right: Val::Px(20.0),
-                                    top: Val::Px(0.0),
-                                    bottom: Val::Px(0.0),
-                                },
-                                padding: UiRect::all(Val::Px(10.0)),
-                                ..Default::default()
-                            },
-                            background_color: BackgroundColor(MATERIALS.tile_placeholder),
+                            style: styles::SCORE_CONTAINER,
+                            background_color:
+                                BackgroundColor(
+                                    MATERIALS.score_box,
+                                ),
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn(TextBundle::from_section(
+                            parent.spawn(
+                                TextBundle::from_section(
                                     "Score",
                                     TextStyle {
-                                        font: font_spec.family.clone(),
+                                        font: font_spec
+                                            .family
+                                            .clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
-                                    }).with_text_alignment(
+                                    },
+                                )
+                                .with_text_alignment(
                                     TextAlignment::Center,
-                                ))
-                            ;
-                            parent
-                                .spawn((TextBundle::from_section(
-                                        "<score>",
-                                        TextStyle {
-                                            font: font_spec.family.clone(),
-                                            font_size: 20.0,
-                                            color: Color::WHITE,
-                                        }).with_text_alignment(
-                                        TextAlignment::Center,
-                                    ),
-                                ScoreDisplay));
+                                ),
+                            );
+                            parent.spawn((
+                                TextBundle::from_section(
+                                    "<score>",
+                                    TextStyle {
+                                        font: font_spec
+                                            .family
+                                            .clone(),
+                                        font_size: 20.0,
+                                        color: Color::WHITE,
+                                    },
+                                )
+                                .with_text_alignment(
+                                    TextAlignment::Center,
+                                ),
+                                ScoreDisplay,
+                            ));
                         });
                     // end scorebox
                     // best scorebox
                     parent
                         .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::ColumnReverse,
-                                align_items: AlignItems::Center,
-                                padding: UiRect::all(Val::Px(10.0)),
-                                ..Default::default()
-                            },
-                            background_color: BackgroundColor(MATERIALS.tile_placeholder),
+                            style: styles::SCORE_CONTAINER,
+                            background_color:
+                                BackgroundColor(
+                                    MATERIALS.score_box,
+                                ),
                             ..Default::default()
                         })
                         .with_children(|parent| {
-                            parent.spawn(TextBundle::from_section(
+                            parent.spawn(
+                                TextBundle::from_section(
                                     "Best",
                                     TextStyle {
-                                        font: font_spec.family.clone(),
+                                        font: font_spec
+                                            .family
+                                            .clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
-                                    }).with_text_alignment(
+                                    },
+                                )
+                                .with_text_alignment(
                                     TextAlignment::Center,
-                                ));
-                            parent
-                                .spawn((TextBundle::from_section(
-                                        "<score>",
-                                        TextStyle {
-                                            font: font_spec.family.clone(),
-                                            font_size: 20.0,
-                                            color: Color::WHITE,
-                                        }).with_text_alignment(
-                                        TextAlignment::Center
-                                    ),
-                                BestScoreDisplay
+                                ),
+                            );
+                            parent.spawn((
+                                TextBundle::from_section(
+                                    "<score>",
+                                    TextStyle {
+                                        font: font_spec
+                                            .family
+                                            .clone(),
+                                        font_size: 20.0,
+                                        color: Color::WHITE,
+                                    },
+                                )
+                                .with_text_alignment(
+                                    TextAlignment::Center,
+                                ),
+                                BestScoreDisplay,
                             ));
                         });
                     // end best scorebox
@@ -140,8 +159,12 @@ fn setup_ui(
             parent
                 .spawn(ButtonBundle {
                     style: Style {
-                        size: Size::new(Val::Px(100.0), Val::Px(30.0)),
-                        justify_content: JustifyContent::Center,
+                        size: Size::new(
+                            Val::Px(130.0),
+                            Val::Px(50.0),
+                        ),
+                        justify_content:
+                            JustifyContent::Center,
                         align_items: AlignItems::Center,
                         ..Default::default()
                     },
@@ -152,10 +175,15 @@ fn setup_ui(
                         text: Text::from_section(
                             "Button",
                             TextStyle {
-                                font: font_spec.family.clone(),
+                                font: font_spec
+                                    .family
+                                    .clone(),
                                 font_size: 20.0,
-                                color: Color::rgb(0.9, 0.9, 0.9),
-                            }),
+                                color: Color::rgb(
+                                    0.9, 0.9, 0.9,
+                                ),
+                            },
+                        ),
                         ..Default::default()
                     });
                 });

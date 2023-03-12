@@ -4,13 +4,14 @@ pub struct Materials {
     pub board: Color,
     pub tile_placeholder: Color,
     pub tile: Color,
+    pub score_box: Color,
     pub none: Color,
 }
 pub const MATERIALS: Materials = Materials {
     board: Color::Lcha {
-        lightness: 0.15,
-        chroma: 0.5,
-        hue: 315.0,
+        lightness: 0.06,
+        chroma: 0.088,
+        hue: 281.0,
         alpha: 1.0,
     },
     tile_placeholder: Color::Lcha {
@@ -20,7 +21,13 @@ pub const MATERIALS: Materials = Materials {
         alpha: 1.0,
     },
     tile: Color::Lcha {
-        lightness: 0.75,
+        lightness: 0.85,
+        chroma: 0.5,
+        hue: 315.0,
+        alpha: 1.0,
+    },
+    score_box: Color::Lcha {
+        lightness: 0.55,
         chroma: 0.5,
         hue: 315.0,
         alpha: 1.0,
@@ -39,19 +46,19 @@ pub const BUTTON_MATERIALS: ButtonMaterials =
         normal: Color::Lcha {
             lightness: 0.15,
             chroma: 0.5,
-            hue: 315.0,
+            hue: 281.0,
             alpha: 1.0,
         },
         hovered: Color::Lcha {
             lightness: 0.55,
             chroma: 0.5,
-            hue: 315.0,
+            hue: 281.0,
             alpha: 1.0,
         },
         pressed: Color::Lcha {
             lightness: 0.75,
             chroma: 0.5,
-            hue: 315.0,
+            hue: 281.0,
             alpha: 1.0,
         },
     };

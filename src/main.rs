@@ -180,7 +180,16 @@ enum RunState {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .insert_resource(ClearColor(
+            Color::hex("#1f2638").unwrap(),
+        ))
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "2048".into(),
+                ..default()
+            }),
+            ..default()
+        }))
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
         .add_plugin(EasingsPlugin)
