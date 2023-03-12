@@ -4,6 +4,9 @@ mod colors;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(
+            Color::hex("#1f2638").unwrap(),
+        ))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "2048".to_string(),
