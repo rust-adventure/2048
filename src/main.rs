@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use itertools::Itertools;
+use rand::prelude::*;
 
 mod colors;
 
@@ -15,7 +16,15 @@ fn main() {
             }),
             ..default()
         }))
-        .add_startup_systems((setup, spawn_board))
+        .add_startup_systems(
+            (
+                setup,
+                spawn_board,
+                apply_system_buffers,
+                spawn_tiles,
+            )
+                .chain(),
+        )
         .run()
 }
 
@@ -26,19 +35,16 @@ fn setup(mut commands: Commands) {
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
 
-// #[derive(Component)]
-// struct Points {
-//     value: u32,
-// }
+#[derive(Component)]
+struct Points {
+    value: u32,
+}
 
-// #[derive(Component)]
-// struct Position {
-//     x: u8,
-//     y: u8,
-// }
-
-// #[derive(Component)]
-// struct TileText;
+#[derive(Component)]
+struct Position {
+    x: u8,
+    y: u8,
+}
 
 #[derive(Component)]
 struct Board {
@@ -106,4 +112,38 @@ fn spawn_board(mut commands: Commands) {
             }
         })
         .insert(board);
+}
+
+fn spawn_tiles(
+    mut commands: Commands,
+    query_board: Query<&Board>,
+) {
+    let board = query_board.single();
+
+    let mut rng = rand::thread_rng();
+    let starting_tiles: Vec<(u8, u8)> = (0..board.size)
+        .cartesian_product(0..board.size)
+        .choose_multiple(&mut rng, 2);
+
+    for (x, y) in starting_tiles.iter() {
+        let pos = Position { x: *x, y: *y };
+        commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    color: colors::TILE,
+                    custom_size: Some(Vec2::new(
+                        TILE_SIZE, TILE_SIZE,
+                    )),
+                    ..default()
+                },
+                transform: Transform::from_xyz(
+                    board.cell_position_to_physical(pos.x),
+                    board.cell_position_to_physical(pos.y),
+                    1.0,
+                ),
+                ..default()
+            })
+            .insert(Points { value: 2 })
+            .insert(pos);
+    }
 }
