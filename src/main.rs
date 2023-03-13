@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use itertools::Itertools;
 use rand::prelude::*;
+use std::convert::TryFrom;
 
 mod colors;
 
@@ -26,7 +27,7 @@ fn main() {
             )
                 .chain(),
         )
-        .add_system(render_tile_points)
+        .add_systems((render_tile_points, board_shift))
         .run()
 }
 
@@ -206,5 +207,51 @@ fn render_tile_points(
             let mut text_section = text.sections.first_mut().expect("expect first section to be accessible as mutable");
             text_section.value = points.value.to_string()
         }
+    }
+}
+
+enum BoardShift {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+impl TryFrom<&KeyCode> for BoardShift {
+    type Error = &'static str;
+
+    fn try_from(
+        value: &KeyCode,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            KeyCode::Left => Ok(BoardShift::Left),
+            KeyCode::Up => Ok(BoardShift::Up),
+            KeyCode::Right => Ok(BoardShift::Right),
+            KeyCode::Down => Ok(BoardShift::Down),
+            _ => Err("not a valid board_shift key"),
+        }
+    }
+}
+
+fn board_shift(input: Res<Input<KeyCode>>) {
+    let shift_direction =
+        input.get_just_pressed().find_map(|key_code| {
+            BoardShift::try_from(key_code).ok()
+        });
+
+    match shift_direction {
+        Some(BoardShift::Left) => {
+            dbg!("left");
+        }
+        Some(BoardShift::Right) => {
+            dbg!("right");
+        }
+        Some(BoardShift::Up) => {
+            dbg!("up");
+        }
+        Some(BoardShift::Down) => {
+            dbg!("down");
+        }
+        None => (),
     }
 }
