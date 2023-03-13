@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use itertools::Itertools;
 use rand::prelude::*;
-use std::convert::TryFrom;
+use std::{cmp::Ordering, convert::TryFrom};
 
 mod colors;
 
@@ -38,12 +38,12 @@ fn setup(mut commands: Commands) {
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
 
-#[derive(Component)]
+#[derive(Debug, Component)]
 struct Points {
     value: u32,
 }
 
-#[derive(Component)]
+#[derive(Debug, Component)]
 struct Position {
     x: u8,
     y: u8,
@@ -233,7 +233,10 @@ impl TryFrom<&KeyCode> for BoardShift {
     }
 }
 
-fn board_shift(input: Res<Input<KeyCode>>) {
+fn board_shift(
+    input: Res<Input<KeyCode>>,
+    mut tiles: Query<(Entity, &mut Position, &mut Points)>,
+) {
     let shift_direction =
         input.get_just_pressed().find_map(|key_code| {
             BoardShift::try_from(key_code).ok()
@@ -242,6 +245,15 @@ fn board_shift(input: Res<Input<KeyCode>>) {
     match shift_direction {
         Some(BoardShift::Left) => {
             dbg!("left");
+            let mut it =
+                tiles.iter_mut().sorted_by(|a, b| {
+                    match Ord::cmp(&a.1.y, &b.1.y) {
+                        Ordering::Equal => {
+                            Ord::cmp(&a.1.x, &b.1.x)
+                        }
+                        ordering => ordering,
+                    }
+                });
         }
         Some(BoardShift::Right) => {
             dbg!("right");
