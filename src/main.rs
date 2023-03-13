@@ -16,6 +16,7 @@ fn main() {
             }),
             ..default()
         }))
+        .init_resource::<FontSpec>()
         .add_startup_systems(
             (
                 setup,
@@ -44,6 +45,26 @@ struct Points {
 struct Position {
     x: u8,
     y: u8,
+}
+
+#[derive(Component)]
+struct TileText;
+
+#[derive(Resource)]
+struct FontSpec {
+    family: Handle<Font>,
+}
+
+impl FromWorld for FontSpec {
+    fn from_world(world: &mut World) -> Self {
+        let asset_server = world
+            .get_resource_mut::<AssetServer>()
+            .unwrap();
+        FontSpec {
+            family: asset_server
+                .load("fonts/FiraSans-Bold.ttf"),
+        }
+    }
 }
 
 #[derive(Component)]
@@ -117,6 +138,7 @@ fn spawn_board(mut commands: Commands) {
 fn spawn_tiles(
     mut commands: Commands,
     query_board: Query<&Board>,
+    font_spec: Res<FontSpec>,
 ) {
     let board = query_board.single();
 
@@ -142,6 +164,29 @@ fn spawn_tiles(
                     1.0,
                 ),
                 ..default()
+            })
+            .with_children(|child_builder| {
+                child_builder
+                    .spawn(Text2dBundle {
+                        text: Text::from_section(
+                            "2",
+                            TextStyle {
+                                font: font_spec
+                                    .family
+                                    .clone(),
+                                font_size: 40.0,
+                                color: Color::BLACK,
+                            },
+                        )
+                        .with_alignment(
+                            TextAlignment::Center,
+                        ),
+                        transform: Transform::from_xyz(
+                            0.0, 0.0, 1.0,
+                        ),
+                        ..default()
+                    })
+                    .insert(TileText);
             })
             .insert(Points { value: 2 })
             .insert(pos);
