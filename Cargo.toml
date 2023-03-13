@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.10"
+itertools = "0.10.5"
