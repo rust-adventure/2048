@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use itertools::Itertools;
 use rand::prelude::*;
-use std::{cmp::Ordering, convert::TryFrom};
+use std::{
+    cmp::Ordering, collections::HashMap, convert::TryFrom,
+    ops::Range,
+};
 
 mod colors;
 mod ui;
@@ -36,6 +39,7 @@ fn main() {
             board_shift,
             render_tiles,
             new_tile_handler,
+            end_game,
         ))
         .run()
 }
@@ -54,12 +58,14 @@ struct Game {
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, PartialEq)]
 struct Points {
     value: u32,
 }
 
-#[derive(Debug, Component, PartialEq, Copy, Clone)]
+#[derive(
+    Debug, Component, PartialEq, Copy, Clone, Eq, Hash,
+)]
 struct Position {
     x: u8,
     y: u8,
@@ -454,4 +460,47 @@ fn spawn_tile(
         })
         .insert(Points { value: 2 })
         .insert(pos);
+}
+
+fn end_game(
+    tiles: Query<(&Position, &Points)>,
+    query_board: Query<&Board>,
+) {
+    let board = query_board.single();
+
+    if tiles.iter().len() == 16 {
+        let map: HashMap<&Position, &Points> =
+            tiles.iter().collect();
+
+        let neighbor_points =
+            [(-1, 0), (0, 1), (1, 0), (0, -1)];
+        let board_range: Range<i8> = 0..(board.size as i8);
+
+        let has_move = tiles.iter().any(
+            |(Position { x, y }, value)| {
+                neighbor_points
+                    .iter()
+                    .filter_map(|(x2, y2)| {
+                        let new_x = *x as i8 - x2;
+                        let new_y = *y as i8 - y2;
+
+                        if !board_range.contains(&new_x)
+                            || !board_range.contains(&new_y)
+                        {
+                            return None;
+                        };
+
+                        map.get(&Position {
+                            x: new_x.try_into().unwrap(),
+                            y: new_y.try_into().unwrap(),
+                        })
+                    })
+                    .any(|&v| v == value)
+            },
+        );
+
+        if !has_move {
+            dbg!("game over!");
+        }
+    };
 }
