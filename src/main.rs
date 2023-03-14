@@ -18,6 +18,7 @@ fn main() {
             ..default()
         }))
         .init_resource::<FontSpec>()
+        .init_resource::<Game>()
         .add_event::<NewTileEvent>()
         .add_startup_systems(
             (
@@ -42,6 +43,11 @@ fn setup(mut commands: Commands) {
 }
 
 struct NewTileEvent;
+
+#[derive(Default, Resource)]
+struct Game {
+    score: u32,
+}
 
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
@@ -270,6 +276,7 @@ fn board_shift(
     mut tiles: Query<(Entity, &mut Position, &mut Points)>,
     query_board: Query<&Board>,
     mut tile_writer: EventWriter<NewTileEvent>,
+    mut game: ResMut<Game>,
 ) {
     let board = query_board.single();
 
@@ -310,6 +317,8 @@ fn board_shift(
                                     .expect("A peeked tile should always exist when we .next here");
                     tile.2.value = tile.2.value
                         + real_next_tile.2.value;
+
+                    game.score += tile.2.value;
 
                     commands
                         .entity(real_next_tile.0)
