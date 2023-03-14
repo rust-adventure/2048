@@ -4,6 +4,7 @@ use rand::prelude::*;
 use std::{cmp::Ordering, convert::TryFrom};
 
 mod colors;
+mod ui;
 
 fn main() {
     App::new()
@@ -17,6 +18,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugin(ui::GameUiPlugin)
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
         .add_event::<NewTileEvent>()
