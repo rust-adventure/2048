@@ -189,10 +189,26 @@ fn setup_ui(
 
 fn scoreboard(
     game: Res<Game>,
-    mut query_scores: Query<&mut Text, With<ScoreDisplay>>,
+    mut query_scores: Query<
+        &mut Text,
+        (
+            With<ScoreDisplay>,
+            Without<BestScoreDisplay>,
+        ),
+    >,
+    mut query_best_scores: Query<
+        &mut Text,
+        (
+            With<BestScoreDisplay>,
+            Without<ScoreDisplay>,
+        ),
+    >,
 ) {
     let mut text = query_scores.single_mut();
     text.sections[0].value = game.score.to_string();
+
+    let mut text = query_best_scores.single_mut();
+    text.sections[0].value = game.score_best.to_string();
 }
 
 fn button_interaction_system(

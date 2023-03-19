@@ -65,6 +65,7 @@ struct NewTileEvent;
 #[derive(Default, Resource)]
 struct Game {
     score: u32,
+    score_best: u32,
 }
 
 const TILE_SIZE: f32 = 40.0;
@@ -364,6 +365,9 @@ fn board_shift(
             }
         }
         tile_writer.send(NewTileEvent);
+    }
+    if game.score_best < game.score {
+        game.score_best = game.score;
     }
 }
 
