@@ -21,6 +21,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_state::<RunState>()
         .add_plugin(ui::GameUiPlugin)
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
@@ -34,18 +35,30 @@ fn main() {
             )
                 .chain(),
         )
-        .add_systems((
-            render_tile_points,
-            board_shift,
-            render_tiles,
-            new_tile_handler,
-            end_game,
-        ))
+        .add_systems(
+            (
+                render_tile_points,
+                board_shift,
+                render_tiles,
+                new_tile_handler,
+                end_game,
+            )
+                .in_set(OnUpdate(RunState::Playing)),
+        )
         .run()
 }
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
+}
+
+#[derive(
+    Default, Debug, Clone, Eq, PartialEq, Hash, States,
+)]
+enum RunState {
+    #[default]
+    Playing,
+    GameOver,
 }
 
 struct NewTileEvent;
@@ -465,6 +478,7 @@ fn spawn_tile(
 fn end_game(
     tiles: Query<(&Position, &Points)>,
     query_board: Query<&Board>,
+    mut next_state: ResMut<NextState<RunState>>,
 ) {
     let board = query_board.single();
 
@@ -501,6 +515,7 @@ fn end_game(
 
         if !has_move {
             dbg!("game over!");
+            next_state.set(RunState::GameOver);
         }
     };
 }
