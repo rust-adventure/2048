@@ -27,12 +27,7 @@ fn main() {
         .init_resource::<Game>()
         .add_event::<NewTileEvent>()
         .add_startup_systems(
-            (
-                setup,
-                spawn_board,
-                apply_system_buffers,
-                spawn_tiles,
-            )
+            (setup, spawn_board, apply_system_buffers)
                 .chain(),
         )
         .add_systems(
@@ -44,6 +39,10 @@ fn main() {
                 end_game,
             )
                 .in_set(OnUpdate(RunState::Playing)),
+        )
+        .add_systems(
+            (game_reset, spawn_tiles)
+                .in_schedule(OnEnter(RunState::Playing)),
         )
         .run()
 }
@@ -518,4 +517,15 @@ fn end_game(
             next_state.set(RunState::GameOver);
         }
     };
+}
+
+fn game_reset(
+    mut commands: Commands,
+    tiles: Query<Entity, With<Position>>,
+    mut game: ResMut<Game>,
+) {
+    for entity in tiles.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    game.score = 0;
 }
