@@ -44,6 +44,10 @@ impl Board {
             + f32::from(pos) * TILE_SIZE
             + f32::from(pos + 1) * TILE_SPACER
     }
+
+    fn tiles(&self) -> impl Iterator<Item = (u8, u8)> {
+        (0..self.size).cartesian_product(0..self.size)
+    }
 }
 
 #[derive(Debug, PartialEq, Component)]
@@ -236,9 +240,7 @@ fn spawn_board(mut commands: Commands) {
             ..Default::default()
         })
         .with_children(|builder| {
-            for tile in (0..board.size)
-                .cartesian_product(0..board.size)
-            {
+            for tile in board.tiles() {
                 builder.spawn(SpriteBundle {
                     sprite: Sprite {
                         color: MATERIALS.tile_placeholder,
@@ -271,9 +273,8 @@ fn spawn_tiles(
     let board = query_board.single();
 
     let mut rng = rand::thread_rng();
-    let starting_tiles: Vec<(u8, u8)> = (0..board.size)
-        .cartesian_product(0..board.size)
-        .choose_multiple(&mut rng, 2);
+    let starting_tiles: Vec<(u8, u8)> =
+        board.tiles().choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.iter() {
         let pos = Position { x: *x, y: *y };
         spawn_tile(&mut commands, board, &font_spec, pos);
@@ -289,8 +290,8 @@ fn render_tile_points(
             let mut text = texts
                 .get_mut(*entity)
                 .expect("expected Text to exist");
-            let text_section = text.sections.first_mut().expect("expect first section to be accessible as mutable");
-            text_section.value = points.value.to_string()
+            text.sections[0].value =
+                points.value.to_string();
         }
     }
 }
@@ -421,9 +422,8 @@ fn new_tile_handler(
     for _event in tile_reader.read() {
         // insert new tile
         let mut rng = rand::thread_rng();
-        let possible_position: Option<Position> = (0
-            ..board.size)
-            .cartesian_product(0..board.size)
+        let possible_position: Option<Position> = board
+            .tiles()
             .filter_map(|tile_pos| {
                 let new_pos = Position {
                     x: tile_pos.0,
