@@ -6,7 +6,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_easings::*;
+// use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
 
@@ -18,6 +18,7 @@ use colors::*;
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
 
+#[derive(Event)]
 struct NewTileEvent;
 
 #[derive(Component)]
@@ -192,11 +193,12 @@ fn main() {
         }))
         .init_resource::<FontSpec>()
         .init_resource::<Game>()
-        .add_plugin(EasingsPlugin)
-        .add_plugin(GameUiPlugin)
+        // .add_plugin(EasingsPlugin)
+        .add_plugins(GameUiPlugin)
         .add_state::<RunState>()
-        .add_startup_systems((setup, spawn_board).chain())
+        .add_systems(Startup, (setup, spawn_board).chain())
         .add_systems(
+            Update,
             (
                 render_tile_points,
                 board_shift,
@@ -204,11 +206,11 @@ fn main() {
                 new_tile_handler,
                 end_game,
             )
-                .in_set(OnUpdate(RunState::Playing)),
+                .run_if(in_state(RunState::Playing)),
         )
         .add_systems(
-            (game_reset, spawn_tiles)
-                .in_schedule(OnEnter(RunState::Playing)),
+            OnEnter(RunState::Playing),
+            (game_reset, spawn_tiles),
         )
         .add_event::<NewTileEvent>()
         .run()
@@ -287,7 +289,7 @@ fn render_tile_points(
             let mut text = texts
                 .get_mut(*entity)
                 .expect("expected Text to exist");
-            let mut text_section = text.sections.first_mut().expect("expect first section to be accessible as mutable");
+            let text_section = text.sections.first_mut().expect("expect first section to be accessible as mutable");
             text_section.value = points.value.to_string()
         }
     }
@@ -383,22 +385,27 @@ fn render_tiles(
     query_board: Query<&Board>,
 ) {
     let board = query_board.single();
-    for (entity, transform, pos) in tiles.iter_mut() {
+    for (_entity, mut transform, pos) in tiles.iter_mut() {
         let x = board.cell_position_to_physical(pos.x);
         let y = board.cell_position_to_physical(pos.y);
-        commands.entity(entity).insert(transform.ease_to(
-            Transform::from_xyz(
-                x,
-                y,
-                transform.translation.z,
-            ),
-            EaseFunction::QuadraticInOut,
-            EasingType::Once {
-                duration: std::time::Duration::from_millis(
-                    100,
-                ),
-            },
-        ));
+        *transform = Transform::from_xyz(
+            x,
+            y,
+            transform.translation.z,
+        );
+        // commands.entity(entity).insert(transform.ease_to(
+        //     Transform::from_xyz(
+        //         x,
+        //         y,
+        //         transform.translation.z,
+        //     ),
+        //     EaseFunction::QuadraticInOut,
+        //     EasingType::Once {
+        //         duration: std::time::Duration::from_millis(
+        //             100,
+        //         ),
+        //     },
+        // ));
     }
 }
 
@@ -411,7 +418,7 @@ fn new_tile_handler(
 ) {
     let board = query_board.single();
 
-    for _event in tile_reader.iter() {
+    for _event in tile_reader.read() {
         // insert new tile
         let mut rng = rand::thread_rng();
         let possible_position: Option<Position> = (0

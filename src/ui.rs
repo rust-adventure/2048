@@ -14,11 +14,14 @@ pub struct GameUiPlugin;
 
 impl Plugin for GameUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup_ui).add_systems((
-            scoreboard,
-            button_interaction_system,
-            button_text_system,
-        ));
+        app.add_systems(Startup, setup_ui).add_systems(
+            Update,
+            (
+                scoreboard,
+                button_interaction_system,
+                button_text_system,
+            ),
+        );
     }
 }
 
@@ -29,10 +32,8 @@ fn setup_ui(
     commands
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(
-                    Val::Percent(100.0),
-                    Val::Percent(100.0),
-                ),
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 align_items: AlignItems::FlexStart,
                 justify_content:
                     JustifyContent::SpaceBetween,
@@ -59,9 +60,11 @@ fn setup_ui(
                     style: Style {
                         justify_content:
                             JustifyContent::Center,
-                        size: Size::AUTO,
-                        gap: Size::all(Val::Px(20.0)),
-                        ..Default::default()
+                        width: Val::Auto,
+                        height: Val::Auto,
+                        column_gap: Val::Px(20.0),
+                        row_gap: Val::Px(20.),
+                        ..default()
                     },
                     ..Default::default()
                 })
@@ -159,10 +162,8 @@ fn setup_ui(
             parent
                 .spawn(ButtonBundle {
                     style: Style {
-                        size: Size::new(
-                            Val::Px(130.0),
-                            Val::Px(50.0),
-                        ),
+                        width: Val::Px(130.0),
+                        height: Val::Px(50.0),
                         justify_content:
                             JustifyContent::Center,
                         align_items: AlignItems::Center,
@@ -218,10 +219,10 @@ fn button_interaction_system(
         interaction_query.iter_mut()
     {
         match interaction {
-            Interaction::Clicked => {
+            Interaction::Pressed => {
                 *color = BUTTON_MATERIALS.pressed.into();
 
-                match run_state.0 {
+                match run_state.get() {
                     RunState::Playing => {
                         next_state.set(RunState::GameOver);
                     }
@@ -252,7 +253,7 @@ fn button_text_system(
                 "expect button to have a first child",
             ))
             .unwrap();
-    match run_state.0 {
+    match run_state.get() {
         RunState::Playing => {
             text.sections[0].value = "End Game".to_string();
         }
