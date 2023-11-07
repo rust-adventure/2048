@@ -6,7 +6,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-// use bevy_easings::*;
+use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
 
@@ -65,23 +65,6 @@ struct Position {
 
 #[derive(Component)]
 pub struct TileText;
-
-#[derive(Resource)]
-struct FontSpec {
-    family: Handle<Font>,
-}
-
-impl FromWorld for FontSpec {
-    fn from_world(world: &mut World) -> Self {
-        let asset_server = world
-            .get_resource_mut::<AssetServer>()
-            .unwrap();
-        FontSpec {
-            family: asset_server
-                .load("fonts/FiraSans-Bold.ttf"),
-        }
-    }
-}
 
 enum BoardShift {
     Left,
@@ -195,10 +178,8 @@ fn main() {
             }),
             ..default()
         }))
-        .init_resource::<FontSpec>()
         .init_resource::<Game>()
-        // .add_plugin(EasingsPlugin)
-        .add_plugins(GameUiPlugin)
+        .add_plugins((EasingsPlugin, GameUiPlugin))
         .add_state::<RunState>()
         .add_systems(Startup, (setup, spawn_board).chain())
         .add_systems(
@@ -268,7 +249,6 @@ fn spawn_board(mut commands: Commands) {
 fn spawn_tiles(
     mut commands: Commands,
     query_board: Query<&Board>,
-    font_spec: Res<FontSpec>,
 ) {
     let board = query_board.single();
 
@@ -277,7 +257,7 @@ fn spawn_tiles(
         board.tiles().choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.iter() {
         let pos = Position { x: *x, y: *y };
-        spawn_tile(&mut commands, board, &font_spec, pos);
+        spawn_tile(&mut commands, board, pos);
     }
 }
 
@@ -379,34 +359,30 @@ fn board_shift(
 
 fn render_tiles(
     mut commands: Commands,
-    mut tiles: Query<
-        (Entity, &mut Transform, &Position),
+    tiles: Query<
+        (Entity, &Transform, &Position),
         Changed<Position>,
     >,
     query_board: Query<&Board>,
 ) {
     let board = query_board.single();
-    for (_entity, mut transform, pos) in tiles.iter_mut() {
+    for (entity, transform, pos) in tiles.iter() {
         let x = board.cell_position_to_physical(pos.x);
         let y = board.cell_position_to_physical(pos.y);
-        *transform = Transform::from_xyz(
-            x,
-            y,
-            transform.translation.z,
-        );
-        // commands.entity(entity).insert(transform.ease_to(
-        //     Transform::from_xyz(
-        //         x,
-        //         y,
-        //         transform.translation.z,
-        //     ),
-        //     EaseFunction::QuadraticInOut,
-        //     EasingType::Once {
-        //         duration: std::time::Duration::from_millis(
-        //             100,
-        //         ),
-        //     },
-        // ));
+
+        commands.entity(entity).insert(transform.ease_to(
+            Transform::from_xyz(
+                x,
+                y,
+                transform.translation.z,
+            ),
+            EaseFunction::QuadraticInOut,
+            EasingType::Once {
+                duration: std::time::Duration::from_millis(
+                    100,
+                ),
+            },
+        ));
     }
 }
 
@@ -415,7 +391,6 @@ fn new_tile_handler(
     mut commands: Commands,
     query_board: Query<&Board>,
     tiles: Query<&Position>,
-    font_spec: Res<FontSpec>,
 ) {
     let board = query_board.single();
 
@@ -440,12 +415,7 @@ fn new_tile_handler(
             .choose(&mut rng);
 
         if let Some(pos) = possible_position {
-            spawn_tile(
-                &mut commands,
-                board,
-                &font_spec,
-                pos,
-            );
+            spawn_tile(&mut commands, board, pos);
         }
     }
 }
@@ -453,7 +423,6 @@ fn new_tile_handler(
 fn spawn_tile(
     commands: &mut Commands,
     board: &Board,
-    font_spec: &Res<FontSpec>,
     pos: Position,
 ) {
     commands
@@ -478,9 +447,9 @@ fn spawn_tile(
                     text: Text::from_section(
                         "2",
                         TextStyle {
-                            font: font_spec.family.clone(),
                             font_size: 40.0,
                             color: Color::BLACK,
+                            ..default()
                         },
                     )
                     .with_alignment(TextAlignment::Center),

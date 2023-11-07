@@ -1,5 +1,5 @@
 use crate::colors::{BUTTON_MATERIALS, MATERIALS};
-use crate::{FontSpec, Game, RunState};
+use crate::{Game, RunState};
 use bevy::prelude::*;
 
 mod styles;
@@ -25,10 +25,7 @@ impl Plugin for GameUiPlugin {
     }
 }
 
-fn setup_ui(
-    mut commands: Commands,
-    font_spec: Res<FontSpec>,
-) {
+fn setup_ui(mut commands: Commands) {
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -49,9 +46,9 @@ fn setup_ui(
             parent.spawn(TextBundle::from_section(
                 "2048",
                 TextStyle {
-                    font: font_spec.family.clone(),
                     font_size: 40.0,
                     color: Color::WHITE,
+                    ..default()
                 },
             ));
 
@@ -84,11 +81,9 @@ fn setup_ui(
                                 TextBundle::from_section(
                                     "Score",
                                     TextStyle {
-                                        font: font_spec
-                                            .family
-                                            .clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
+                                        ..default()
                                     },
                                 )
                                 .with_text_alignment(
@@ -99,11 +94,9 @@ fn setup_ui(
                                 TextBundle::from_section(
                                     "<score>",
                                     TextStyle {
-                                        font: font_spec
-                                            .family
-                                            .clone(),
                                         font_size: 20.0,
                                         color: Color::WHITE,
+                                        ..default()
                                     },
                                 )
                                 .with_text_alignment(
@@ -128,11 +121,9 @@ fn setup_ui(
                                 TextBundle::from_section(
                                     "Best",
                                     TextStyle {
-                                        font: font_spec
-                                            .family
-                                            .clone(),
                                         font_size: 15.0,
                                         color: Color::WHITE,
+                                        ..default()
                                     },
                                 )
                                 .with_text_alignment(
@@ -143,11 +134,9 @@ fn setup_ui(
                                 TextBundle::from_section(
                                     "<score>",
                                     TextStyle {
-                                        font: font_spec
-                                            .family
-                                            .clone(),
                                         font_size: 20.0,
                                         color: Color::WHITE,
+                                        ..default()
                                     },
                                 )
                                 .with_text_alignment(
@@ -176,13 +165,11 @@ fn setup_ui(
                         text: Text::from_section(
                             "Button",
                             TextStyle {
-                                font: font_spec
-                                    .family
-                                    .clone(),
                                 font_size: 20.0,
                                 color: Color::rgb(
                                     0.9, 0.9, 0.9,
                                 ),
+                                ..default()
                             },
                         ),
                         ..Default::default()
