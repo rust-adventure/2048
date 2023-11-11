@@ -21,7 +21,7 @@ const TILE_SPACER: f32 = 10.0;
 #[derive(Event)]
 struct NewTileEvent;
 
-#[derive(Component)]
+#[derive(Resource)]
 struct Board {
     size: u8,
     physical_size: f32,
@@ -171,6 +171,7 @@ fn main() {
         .insert_resource(ClearColor(
             Color::hex("#1f2638").unwrap(),
         ))
+        .insert_resource(Board::new(4))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "2048".into(),
@@ -205,20 +206,17 @@ fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn spawn_board(mut commands: Commands) {
-    let board = Board::new(4);
-
+fn spawn_board(mut commands: Commands, board: Res<Board>) {
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
                 color: MATERIALS.board,
-                custom_size: Some(Vec2::new(
-                    board.physical_size,
+                custom_size: Some(Vec2::splat(
                     board.physical_size,
                 )),
-                ..Sprite::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .with_children(|builder| {
             for tile in board.tiles() {
@@ -228,7 +226,7 @@ fn spawn_board(mut commands: Commands) {
                         custom_size: Some(Vec2::new(
                             TILE_SIZE, TILE_SIZE,
                         )),
-                        ..Sprite::default()
+                        ..default()
                     },
                     transform: Transform::from_xyz(
                         board.cell_position_to_physical(
@@ -239,25 +237,19 @@ fn spawn_board(mut commands: Commands) {
                         ),
                         1.0,
                     ),
-                    ..Default::default()
+                    ..default()
                 });
             }
-        })
-        .insert(board);
+        });
 }
 
-fn spawn_tiles(
-    mut commands: Commands,
-    query_board: Query<&Board>,
-) {
-    let board = query_board.single();
-
+fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
     let mut rng = rand::thread_rng();
     let starting_tiles: Vec<(u8, u8)> =
         board.tiles().choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.iter() {
         let pos = Position { x: *x, y: *y };
-        spawn_tile(&mut commands, board, pos);
+        spawn_tile(&mut commands, &board, pos);
     }
 }
 
@@ -277,15 +269,13 @@ fn render_tile_points(
 }
 
 fn board_shift(
-    query_board: Query<&Board>,
+    board: Res<Board>,
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     mut tiles: Query<(Entity, &mut Position, &mut Points)>,
     mut tile_writer: EventWriter<NewTileEvent>,
     mut game: ResMut<Game>,
 ) {
-    let board = query_board.single();
-
     let shift_direction =
         keyboard_input.get_just_pressed().find_map(
             |key_code| BoardShift::try_from(key_code).ok(),
@@ -363,9 +353,8 @@ fn render_tiles(
         (Entity, &Transform, &Position),
         Changed<Position>,
     >,
-    query_board: Query<&Board>,
+    board: Res<Board>,
 ) {
-    let board = query_board.single();
     for (entity, transform, pos) in tiles.iter() {
         let x = board.cell_position_to_physical(pos.x);
         let y = board.cell_position_to_physical(pos.y);
@@ -389,11 +378,9 @@ fn render_tiles(
 fn new_tile_handler(
     mut tile_reader: EventReader<NewTileEvent>,
     mut commands: Commands,
-    query_board: Query<&Board>,
+    board: Res<Board>,
     tiles: Query<&Position>,
 ) {
-    let board = query_board.single();
-
     for _event in tile_reader.read() {
         // insert new tile
         let mut rng = rand::thread_rng();
@@ -415,7 +402,7 @@ fn new_tile_handler(
             .choose(&mut rng);
 
         if let Some(pos) = possible_position {
-            spawn_tile(&mut commands, board, pos);
+            spawn_tile(&mut commands, &board, pos);
         }
     }
 }
@@ -426,21 +413,25 @@ fn spawn_tile(
     pos: Position,
 ) {
     commands
-        .spawn(SpriteBundle {
-            sprite: Sprite {
-                color: MATERIALS.tile,
-                custom_size: Some(Vec2::new(
-                    TILE_SIZE, TILE_SIZE,
-                )),
-                ..Sprite::default()
+        .spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: MATERIALS.tile,
+                    custom_size: Some(Vec2::splat(
+                        TILE_SIZE,
+                    )),
+                    ..default()
+                },
+                transform: Transform::from_xyz(
+                    board.cell_position_to_physical(pos.x),
+                    board.cell_position_to_physical(pos.y),
+                    2.0,
+                ),
+                ..default()
             },
-            transform: Transform::from_xyz(
-                board.cell_position_to_physical(pos.x),
-                board.cell_position_to_physical(pos.y),
-                2.0,
-            ),
-            ..Default::default()
-        })
+            Points { value: 2 },
+            pos,
+        ))
         .with_children(|child_builder| {
             child_builder
                 .spawn(Text2dBundle {
@@ -456,21 +447,17 @@ fn spawn_tile(
                     transform: Transform::from_xyz(
                         0.0, 0.0, 1.0,
                     ),
-                    ..Default::default()
+                    ..default()
                 })
                 .insert(TileText);
-        })
-        .insert(Points { value: 2 })
-        .insert(pos);
+        });
 }
 
 fn end_game(
     tiles: Query<(&Position, &Points)>,
-    query_board: Query<&Board>,
+    board: Res<Board>,
     mut next_state: ResMut<NextState<RunState>>,
 ) {
-    let board = query_board.single();
-
     if tiles.iter().len() == 16 {
         let map: HashMap<&Position, &Points> =
             tiles.iter().collect();

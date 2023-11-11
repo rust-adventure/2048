@@ -35,12 +35,12 @@ fn setup_ui(mut commands: Commands) {
                 justify_content:
                     JustifyContent::SpaceBetween,
                 padding: UiRect::all(Val::Px(50.0)),
-                ..Default::default()
+                ..default()
             },
             background_color: BackgroundColor(
                 MATERIALS.none,
             ),
-            ..Default::default()
+            ..default()
         })
         .with_children(|parent| {
             parent.spawn(TextBundle::from_section(
@@ -63,7 +63,7 @@ fn setup_ui(mut commands: Commands) {
                         row_gap: Val::Px(20.),
                         ..default()
                     },
-                    ..Default::default()
+                    ..default()
                 })
                 .with_children(|parent| {
                     // scorebox
@@ -74,7 +74,7 @@ fn setup_ui(mut commands: Commands) {
                                 BackgroundColor(
                                     MATERIALS.score_box,
                                 ),
-                            ..Default::default()
+                            ..default()
                         })
                         .with_children(|parent| {
                             parent.spawn(
@@ -114,7 +114,7 @@ fn setup_ui(mut commands: Commands) {
                                 BackgroundColor(
                                     MATERIALS.score_box,
                                 ),
-                            ..Default::default()
+                            ..default()
                         })
                         .with_children(|parent| {
                             parent.spawn(
@@ -156,9 +156,9 @@ fn setup_ui(mut commands: Commands) {
                         justify_content:
                             JustifyContent::Center,
                         align_items: AlignItems::Center,
-                        ..Default::default()
+                        ..default()
                     },
-                    ..Default::default()
+                    ..default()
                 })
                 .with_children(|parent| {
                     parent.spawn(TextBundle {
@@ -172,7 +172,7 @@ fn setup_ui(mut commands: Commands) {
                                 ..default()
                             },
                         ),
-                        ..Default::default()
+                        ..default()
                     });
                 });
         });
