@@ -142,10 +142,10 @@ impl TryFrom<&KeyCode> for BoardShift {
         value: &KeyCode,
     ) -> Result<Self, Self::Error> {
         match value {
-            KeyCode::Left => Ok(BoardShift::Left),
-            KeyCode::Up => Ok(BoardShift::Up),
-            KeyCode::Right => Ok(BoardShift::Right),
-            KeyCode::Down => Ok(BoardShift::Down),
+            KeyCode::ArrowLeft => Ok(BoardShift::Left),
+            KeyCode::ArrowUp => Ok(BoardShift::Up),
+            KeyCode::ArrowRight => Ok(BoardShift::Right),
+            KeyCode::ArrowDown => Ok(BoardShift::Down),
             _ => Err("not a valid board_shift key"),
         }
     }
@@ -181,7 +181,7 @@ fn main() {
         }))
         .init_resource::<Game>()
         .add_plugins((EasingsPlugin, GameUiPlugin))
-        .add_state::<RunState>()
+        .init_state::<RunState>()
         .add_systems(Startup, (setup, spawn_board).chain())
         .add_systems(
             Update,
@@ -271,7 +271,7 @@ fn render_tile_points(
 fn board_shift(
     board: Res<Board>,
     mut commands: Commands,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut tiles: Query<(Entity, &mut Position, &mut Points)>,
     mut tile_writer: EventWriter<NewTileEvent>,
     mut game: ResMut<Game>,
@@ -443,7 +443,7 @@ fn spawn_tile(
                             ..default()
                         },
                     )
-                    .with_alignment(TextAlignment::Center),
+                    .with_justify(JustifyText::Center),
                     transform: Transform::from_xyz(
                         0.0, 0.0, 1.0,
                     ),

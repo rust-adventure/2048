@@ -86,8 +86,8 @@ fn setup_ui(mut commands: Commands) {
                                         ..default()
                                     },
                                 )
-                                .with_text_alignment(
-                                    TextAlignment::Center,
+                                .with_text_justify(
+                                    JustifyText::Center,
                                 ),
                             );
                             parent.spawn((
@@ -99,8 +99,8 @@ fn setup_ui(mut commands: Commands) {
                                         ..default()
                                     },
                                 )
-                                .with_text_alignment(
-                                    TextAlignment::Center,
+                                .with_text_justify(
+                                    JustifyText::Center,
                                 ),
                                 ScoreDisplay,
                             ));
@@ -126,8 +126,8 @@ fn setup_ui(mut commands: Commands) {
                                         ..default()
                                     },
                                 )
-                                .with_text_alignment(
-                                    TextAlignment::Center,
+                                .with_text_justify(
+                                    JustifyText::Center,
                                 ),
                             );
                             parent.spawn((
@@ -139,8 +139,8 @@ fn setup_ui(mut commands: Commands) {
                                         ..default()
                                     },
                                 )
-                                .with_text_alignment(
-                                    TextAlignment::Center,
+                                .with_text_justify(
+                                    JustifyText::Center,
                                 ),
                                 BestScoreDisplay,
                             ));
