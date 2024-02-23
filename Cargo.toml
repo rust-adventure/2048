@@ -12,3 +12,7 @@ bevy = "0.13"
 bevy_easings = "0.13"
 itertools = "0.12"
 rand = "0.8.5"
+
+[lints.clippy]
+type_complexity = "allow"
+too_many_arguments = "allow"
