@@ -66,6 +66,7 @@ struct Position {
 #[derive(Component)]
 pub struct TileText;
 
+#[derive(Debug)]
 enum BoardShift {
     Left,
     Right,
@@ -186,12 +187,13 @@ fn main() {
         .add_systems(
             Update,
             (
-                render_tile_points,
                 board_shift,
-                render_tiles,
                 new_tile_handler,
+                render_tile_points,
+                render_tiles,
                 end_game,
             )
+                .chain()
                 .run_if(in_state(RunState::Playing)),
         )
         .add_systems(
@@ -223,8 +225,8 @@ fn spawn_board(mut commands: Commands, board: Res<Board>) {
                 builder.spawn(SpriteBundle {
                     sprite: Sprite {
                         color: MATERIALS.tile_placeholder,
-                        custom_size: Some(Vec2::new(
-                            TILE_SIZE, TILE_SIZE,
+                        custom_size: Some(Vec2::splat(
+                            TILE_SIZE,
                         )),
                         ..default()
                     },
@@ -249,7 +251,15 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
         board.tiles().choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.iter() {
         let pos = Position { x: *x, y: *y };
-        spawn_tile(&mut commands, &board, pos);
+        spawn_tile(
+            &mut commands,
+            &board,
+            pos,
+            #[cfg(test)]
+            {
+                Points { value: 2 }
+            },
+        );
     }
 }
 
@@ -402,7 +412,15 @@ fn new_tile_handler(
             .choose(&mut rng);
 
         if let Some(pos) = possible_position {
-            spawn_tile(&mut commands, &board, pos);
+            spawn_tile(
+                &mut commands,
+                &board,
+                pos,
+                #[cfg(test)]
+                {
+                    Points { value: 2 }
+                },
+            );
         }
     }
 }
@@ -411,6 +429,7 @@ fn spawn_tile(
     commands: &mut Commands,
     board: &Board,
     pos: Position,
+    #[cfg(test)] points: Points,
 ) {
     commands
         .spawn((
@@ -429,7 +448,14 @@ fn spawn_tile(
                 ),
                 ..default()
             },
-            Points { value: 2 },
+            #[cfg(test)]
+            {
+                points
+            },
+            #[cfg(not(test))]
+            {
+                Points { value: 2 }
+            },
             pos,
         ))
         .with_children(|child_builder| {
@@ -490,7 +516,6 @@ fn end_game(
         );
 
         if !has_move {
-            dbg!("game over!");
             next_state.set(RunState::GameOver);
         }
     };
@@ -505,4 +530,65 @@ fn game_reset(
         commands.entity(entity).despawn_recursive();
     }
     game.score = 0;
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy::ecs::system::CommandQueue;
+
+    use super::*;
+
+    #[test]
+    fn gameover_triggers_when_16_tiles_exist() {
+        let mut app = App::new();
+        let board = Board::new(4);
+        app.insert_resource(Board::new(4))
+            .init_state::<RunState>()
+            .add_systems(Startup, (spawn_board).chain())
+            .add_systems(
+                Update,
+                (
+                    end_game,
+                    // apply_state_transition here is
+                    // optional, but would require an
+                    // additional
+                    // app.update() cycle to run if we
+                    // didn't include it here.
+                    apply_state_transition::<RunState>,
+                )
+                    .chain(),
+            );
+
+        // insert tiles to set up a game
+        let mut command_queue = CommandQueue::default();
+
+        let mut commands =
+            Commands::new(&mut command_queue, &app.world);
+        for (i, (x, y)) in board.tiles().enumerate() {
+            spawn_tile(
+                &mut commands,
+                &board,
+                Position { x, y },
+                Points {
+                    value: 2_u32.pow(i as u32),
+                },
+            );
+        }
+
+        command_queue.apply(&mut app.world);
+
+        // Run systems to insert tiles.
+        // Game over is also detected immediately, but the
+        // NextState resource must be used after
+        // it is inserted by `apply_state_transition`
+        // system
+        app.update();
+
+        let state = app
+            .world
+            .get_resource::<State<RunState>>()
+            .expect("state to be inserted");
+
+        assert_eq!(&RunState::GameOver, state.get());
+    }
 }
