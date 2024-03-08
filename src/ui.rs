@@ -1,4 +1,4 @@
-use crate::colors::{BUTTON_MATERIALS, MATERIALS};
+use crate::colors;
 use crate::{Game, RunState};
 use bevy::prelude::*;
 
@@ -25,7 +25,39 @@ impl Plugin for GameUiPlugin {
     }
 }
 
-fn setup_ui(mut commands: Commands) {
+#[derive(Resource)]
+struct UiAssets {
+    button_red: Handle<Image>,
+    button: Handle<Image>,
+    panel: Handle<Image>,
+    panel_green: Handle<Image>,
+}
+
+fn setup_ui(
+    mut commands: Commands,
+    asset_server: ResMut<AssetServer>,
+) {
+    let ui_assets = UiAssets {
+        button_red: asset_server.load("button_red.png"),
+        button: asset_server.load("button.png"),
+        panel_green: asset_server.load("panel_green.png"),
+        panel: asset_server.load("panel.png"),
+    };
+
+    let slicer = TextureSlicer {
+        border: BorderRect::square(10.0),
+        center_scale_mode: SliceScaleMode::Stretch,
+        sides_scale_mode: SliceScaleMode::Stretch,
+        max_corner_scale: 1.0,
+    };
+
+    let panel_slicer = TextureSlicer {
+        border: BorderRect::square(20.0),
+        center_scale_mode: SliceScaleMode::Stretch,
+        sides_scale_mode: SliceScaleMode::Stretch,
+        max_corner_scale: 1.0,
+    };
+
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -38,7 +70,7 @@ fn setup_ui(mut commands: Commands) {
                 ..default()
             },
             background_color: BackgroundColor(
-                MATERIALS.none,
+                colors::palette::NONE,
             ),
             ..default()
         })
@@ -68,14 +100,20 @@ fn setup_ui(mut commands: Commands) {
                 .with_children(|parent| {
                     // scorebox
                     parent
-                        .spawn(NodeBundle {
-                            style: styles::SCORE_CONTAINER,
-                            background_color:
-                                BackgroundColor(
-                                    MATERIALS.score_box,
-                                ),
-                            ..default()
-                        })
+                        .spawn((
+                            ImageBundle {
+                                style:
+                                    styles::SCORE_CONTAINER,
+                                image: ui_assets
+                                    .panel
+                                    .clone()
+                                    .into(),
+                                ..default()
+                            },
+                            ImageScaleMode::Sliced(
+                                panel_slicer.clone(),
+                            ),
+                        ))
                         .with_children(|parent| {
                             parent.spawn(
                                 TextBundle::from_section(
@@ -108,14 +146,20 @@ fn setup_ui(mut commands: Commands) {
                     // end scorebox
                     // best scorebox
                     parent
-                        .spawn(NodeBundle {
-                            style: styles::SCORE_CONTAINER,
-                            background_color:
-                                BackgroundColor(
-                                    MATERIALS.score_box,
-                                ),
-                            ..default()
-                        })
+                        .spawn((
+                            ImageBundle {
+                                style:
+                                    styles::SCORE_CONTAINER,
+                                image: ui_assets
+                                    .panel_green
+                                    .clone()
+                                    .into(),
+                                ..default()
+                            },
+                            ImageScaleMode::Sliced(
+                                panel_slicer,
+                            ),
+                        ))
                         .with_children(|parent| {
                             parent.spawn(
                                 TextBundle::from_section(
@@ -149,17 +193,24 @@ fn setup_ui(mut commands: Commands) {
                 });
 
             parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        width: Val::Px(130.0),
-                        height: Val::Px(50.0),
-                        justify_content:
-                            JustifyContent::Center,
-                        align_items: AlignItems::Center,
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            width: Val::Px(130.0),
+                            height: Val::Px(50.0),
+                            justify_content:
+                                JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        image: ui_assets
+                            .button
+                            .clone()
+                            .into(),
                         ..default()
                     },
-                    ..default()
-                })
+                    ImageScaleMode::Sliced(slicer.clone()),
+                ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle {
                         text: Text::from_section(
@@ -176,6 +227,8 @@ fn setup_ui(mut commands: Commands) {
                     });
                 });
         });
+
+    commands.insert_resource(ui_assets);
 }
 
 fn scoreboard(
@@ -196,33 +249,46 @@ fn scoreboard(
 
 fn button_interaction_system(
     mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
+        (
+            &Interaction,
+            &mut BackgroundColor,
+            &mut UiImage,
+        ),
         (Changed<Interaction>, With<Button>),
     >,
     run_state: Res<State<RunState>>,
     mut next_state: ResMut<NextState<RunState>>,
+    ui_assets: Res<UiAssets>,
 ) {
-    for (interaction, mut color) in
+    for (interaction, mut color, mut image) in
         interaction_query.iter_mut()
     {
-        match interaction {
-            Interaction::Pressed => {
-                *color = BUTTON_MATERIALS.pressed.into();
-
-                match run_state.get() {
-                    RunState::Playing => {
-                        next_state.set(RunState::GameOver);
-                    }
-                    RunState::GameOver => {
-                        next_state.set(RunState::Playing);
-                    }
-                }
+        *color = Color::WHITE.into();
+        match (interaction, run_state.get()) {
+            (Interaction::Pressed, RunState::Playing) => {
+                *image = ui_assets.button.clone().into();
+                next_state.set(RunState::GameOver);
             }
-            Interaction::Hovered => {
-                *color = BUTTON_MATERIALS.hovered.into();
+            (Interaction::Pressed, RunState::GameOver) => {
+                *image =
+                    ui_assets.button_red.clone().into();
+                next_state.set(RunState::Playing);
             }
-            Interaction::None => {
-                *color = BUTTON_MATERIALS.normal.into();
+            (Interaction::Hovered, RunState::Playing) => {
+                *color = Color::WHITE.with_a(0.8).into();
+                *image =
+                    ui_assets.button_red.clone().into();
+            }
+            (Interaction::Hovered, RunState::GameOver) => {
+                *color = Color::WHITE.with_a(0.8).into();
+                *image = ui_assets.button.clone().into();
+            }
+            (Interaction::None, RunState::Playing) => {
+                *image =
+                    ui_assets.button_red.clone().into();
+            }
+            (Interaction::None, RunState::GameOver) => {
+                *image = ui_assets.button.clone().into();
             }
         }
     }

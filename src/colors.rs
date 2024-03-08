@@ -1,64 +1,10 @@
 use bevy::prelude::Color;
 
-pub struct Materials {
-    pub board: Color,
-    pub tile_placeholder: Color,
-    pub tile: Color,
-    pub score_box: Color,
-    pub none: Color,
-}
-pub const MATERIALS: Materials = Materials {
-    board: Color::Lcha {
-        lightness: 0.06,
-        chroma: 0.088,
-        hue: 281.0,
-        alpha: 1.0,
-    },
-    tile_placeholder: Color::Lcha {
-        lightness: 0.55,
-        chroma: 0.5,
-        hue: 315.0,
-        alpha: 1.0,
-    },
-    tile: Color::Lcha {
-        lightness: 0.85,
-        chroma: 0.5,
-        hue: 315.0,
-        alpha: 1.0,
-    },
-    score_box: Color::Lcha {
-        lightness: 0.55,
-        chroma: 0.5,
-        hue: 315.0,
-        alpha: 1.0,
-    },
-    none: Color::NONE,
-};
+pub mod palette {
+    use super::*;
 
-pub struct ButtonMaterials {
-    pub normal: Color,
-    pub hovered: Color,
-    pub pressed: Color,
+    pub const TILE_PLACEHOLDER: Color =
+        Color::rgb(0.54, 0.64, 0.72);
+    pub const TILE: Color = Color::rgb(0.63, 0.74, 0.83);
+    pub const NONE: Color = Color::NONE;
 }
-
-pub const BUTTON_MATERIALS: ButtonMaterials =
-    ButtonMaterials {
-        normal: Color::Lcha {
-            lightness: 0.15,
-            chroma: 0.5,
-            hue: 281.0,
-            alpha: 1.0,
-        },
-        hovered: Color::Lcha {
-            lightness: 0.55,
-            chroma: 0.5,
-            hue: 281.0,
-            alpha: 1.0,
-        },
-        pressed: Color::Lcha {
-            lightness: 0.75,
-            chroma: 0.5,
-            hue: 281.0,
-            alpha: 1.0,
-        },
-    };

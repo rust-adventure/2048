@@ -13,7 +13,6 @@ use rand::prelude::*;
 mod ui;
 use ui::*;
 mod colors;
-use colors::*;
 
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
@@ -77,32 +76,16 @@ impl BoardShift {
     fn sort(&self, a: &Position, b: &Position) -> Ordering {
         match self {
             BoardShift::Left => {
-                match Ord::cmp(&a.y, &b.y) {
-                    Ordering::Equal => Ord::cmp(&a.x, &b.x),
-                    ordering => ordering,
-                }
+                a.y.cmp(&b.y).then(a.x.cmp(&b.x))
             }
             BoardShift::Right => {
-                match Ord::cmp(&b.y, &a.y) {
-                    std::cmp::Ordering::Equal => {
-                        Ord::cmp(&b.x, &a.x)
-                    }
-                    a => a,
-                }
+                b.y.cmp(&a.y).then(b.x.cmp(&a.x))
             }
-            BoardShift::Up => match Ord::cmp(&b.x, &a.x) {
-                std::cmp::Ordering::Equal => {
-                    Ord::cmp(&b.y, &a.y)
-                }
-                ordering => ordering,
-            },
+            BoardShift::Up => {
+                b.x.cmp(&a.x).then(b.y.cmp(&a.y))
+            }
             BoardShift::Down => {
-                match Ord::cmp(&a.x, &b.x) {
-                    std::cmp::Ordering::Equal => {
-                        Ord::cmp(&a.y, &b.y)
-                    }
-                    ordering => ordering,
-                }
+                a.x.cmp(&b.x).then(a.y.cmp(&b.y))
             }
         }
     }
@@ -173,15 +156,18 @@ fn main() {
             Color::hex("#1f2638").unwrap(),
         ))
         .insert_resource(Board::new(4))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "2048".into(),
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "2048".into(),
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }))
+            EasingsPlugin,
+            GameUiPlugin,
+        ))
         .init_resource::<Game>()
-        .add_plugins((EasingsPlugin, GameUiPlugin))
         .init_state::<RunState>()
         .add_systems(Startup, (setup, spawn_board).chain())
         .add_systems(
@@ -208,23 +194,35 @@ fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn spawn_board(mut commands: Commands, board: Res<Board>) {
+fn spawn_board(
+    mut commands: Commands,
+    asset_server: ResMut<AssetServer>,
+    board: Res<Board>,
+) {
+    let panel_slicer = TextureSlicer {
+        border: BorderRect::square(20.0),
+        center_scale_mode: SliceScaleMode::Stretch,
+        sides_scale_mode: SliceScaleMode::Stretch,
+        max_corner_scale: 1.0,
+    };
     commands
-        .spawn(SpriteBundle {
+        .spawn((SpriteBundle {
+            texture: asset_server.load("panel.png"),
             sprite: Sprite {
-                color: MATERIALS.board,
                 custom_size: Some(Vec2::splat(
-                    board.physical_size,
+                    board.physical_size + 70.,
                 )),
                 ..default()
             },
             ..default()
-        })
+        }, ImageScaleMode::Sliced(
+            panel_slicer.clone(),
+        ),))
         .with_children(|builder| {
             for tile in board.tiles() {
                 builder.spawn(SpriteBundle {
                     sprite: Sprite {
-                        color: MATERIALS.tile_placeholder,
+                        color: colors::palette::TILE_PLACEHOLDER,
                         custom_size: Some(Vec2::splat(
                             TILE_SIZE,
                         )),
@@ -264,7 +262,10 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
 }
 
 fn render_tile_points(
-    mut texts: Query<&mut Text, With<TileText>>,
+    mut texts: Query<
+        (&mut Text, &mut Transform),
+        With<TileText>,
+    >,
     tiles: Query<(&Points, &Children)>,
 ) {
     for (points, children) in tiles.iter() {
@@ -272,8 +273,11 @@ fn render_tile_points(
             let mut text = texts
                 .get_mut(*entity)
                 .expect("expected Text to exist");
-            text.sections[0].value =
+            text.0.sections[0].value =
                 points.value.to_string();
+            *text.1 = text.1.with_scale(Vec3::splat(
+                1.0 / points.value.to_string().len() as f32,
+            ));
         }
     }
 }
@@ -435,7 +439,7 @@ fn spawn_tile(
         .spawn((
             SpriteBundle {
                 sprite: Sprite {
-                    color: MATERIALS.tile,
+                    color: colors::palette::TILE,
                     custom_size: Some(Vec2::splat(
                         TILE_SIZE,
                     )),
