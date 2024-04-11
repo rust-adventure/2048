@@ -8,9 +8,9 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.13"
-bevy_easings = "0.13"
-itertools = "0.12"
+bevy = "0.13.2"
+bevy_easings = "0.13.1"
+itertools = "0.12.1"
 rand = "0.8.5"
 
 [lints.clippy]

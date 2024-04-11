@@ -5,10 +5,11 @@ pub const SCORE_CONTAINER: Style = {
     style.flex_direction = FlexDirection::ColumnReverse;
     style.align_items = AlignItems::Center;
     style.padding = UiRect {
-        left: Val::Px(10.0),
-        right: Val::Px(10.0),
-        top: Val::Px(10.0),
-        bottom: Val::Px(10.0),
+        left: Val::Px(20.0),
+        right: Val::Px(20.0),
+        top: Val::Px(20.0),
+        bottom: Val::Px(20.0),
     };
+    style.min_width = Val::Px(100.);
     style
 };

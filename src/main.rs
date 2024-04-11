@@ -206,18 +206,21 @@ fn spawn_board(
         max_corner_scale: 1.0,
     };
     commands
-        .spawn((SpriteBundle {
-            texture: asset_server.load("panel.png"),
-            sprite: Sprite {
-                custom_size: Some(Vec2::splat(
-                    board.physical_size + 70.,
-                )),
+        .spawn((
+            SpriteBundle {
+                texture: asset_server.load("panel.png"),
+                sprite: Sprite {
+                    custom_size: Some(Vec2::splat(
+                        board.physical_size + 70.,
+                    )),
+                    ..default()
+                },
                 ..default()
             },
-            ..default()
-        }, ImageScaleMode::Sliced(
-            panel_slicer.clone(),
-        ),))
+            ImageScaleMode::Sliced(
+                panel_slicer.clone(),
+            ),
+        ))
         .with_children(|builder| {
             for tile in board.tiles() {
                 builder.spawn(SpriteBundle {
@@ -253,10 +256,7 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
             &mut commands,
             &board,
             pos,
-            #[cfg(test)]
-            {
-                Points { value: 2 }
-            },
+            Points { value: 2 },
         );
     }
 }
@@ -270,12 +270,12 @@ fn render_tile_points(
 ) {
     for (points, children) in tiles.iter() {
         if let Some(entity) = children.first() {
-            let mut text = texts
+            let (mut text, mut transform) = texts
                 .get_mut(*entity)
                 .expect("expected Text to exist");
-            text.0.sections[0].value =
+            text.sections[0].value =
                 points.value.to_string();
-            *text.1 = text.1.with_scale(Vec3::splat(
+            *transform = transform.with_scale(Vec3::splat(
                 1.0 / points.value.to_string().len() as f32,
             ));
         }
@@ -420,10 +420,7 @@ fn new_tile_handler(
                 &mut commands,
                 &board,
                 pos,
-                #[cfg(test)]
-                {
-                    Points { value: 2 }
-                },
+                Points { value: 2 },
             );
         }
     }
@@ -433,7 +430,7 @@ fn spawn_tile(
     commands: &mut Commands,
     board: &Board,
     pos: Position,
-    #[cfg(test)] points: Points,
+    points: Points,
 ) {
     commands
         .spawn((
@@ -452,19 +449,12 @@ fn spawn_tile(
                 ),
                 ..default()
             },
-            #[cfg(test)]
-            {
-                points
-            },
-            #[cfg(not(test))]
-            {
-                Points { value: 2 }
-            },
+            points,
             pos,
         ))
         .with_children(|child_builder| {
-            child_builder
-                .spawn(Text2dBundle {
+            child_builder.spawn((
+                Text2dBundle {
                     text: Text::from_section(
                         "2",
                         TextStyle {
@@ -478,8 +468,9 @@ fn spawn_tile(
                         0.0, 0.0, 1.0,
                     ),
                     ..default()
-                })
-                .insert(TileText);
+                },
+                TileText,
+            ));
         });
 }
 
@@ -488,41 +479,42 @@ fn end_game(
     board: Res<Board>,
     mut next_state: ResMut<NextState<RunState>>,
 ) {
-    if tiles.iter().len() == 16 {
-        let map: HashMap<&Position, &Points> =
-            tiles.iter().collect();
+    if tiles.iter().len() != 16 {
+        return;
+    }
 
-        let neighbor_points =
-            [(-1, 0), (0, 1), (1, 0), (0, -1)];
-        let board_range: Range<i8> = 0..(board.size as i8);
+    let map: HashMap<&Position, &Points> =
+        tiles.iter().collect();
 
-        let has_move = tiles.iter().any(
-            |(Position { x, y }, value)| {
-                neighbor_points
-                    .iter()
-                    .filter_map(|(x2, y2)| {
-                        let new_x = *x as i8 - x2;
-                        let new_y = *y as i8 - y2;
+    let neighbor_points =
+        [(-1, 0), (0, 1), (1, 0), (0, -1)];
+    let board_range: Range<i8> = 0..(board.size as i8);
 
-                        if !board_range.contains(&new_x)
-                            || !board_range.contains(&new_y)
-                        {
-                            return None;
-                        };
+    let has_move =
+        tiles.iter().any(|(Position { x, y }, value)| {
+            neighbor_points
+                .iter()
+                .filter_map(|(x2, y2)| {
+                    let new_x = *x as i8 - x2;
+                    let new_y = *y as i8 - y2;
 
-                        map.get(&Position {
-                            x: new_x.try_into().unwrap(),
-                            y: new_y.try_into().unwrap(),
-                        })
+                    if !board_range.contains(&new_x)
+                        || !board_range.contains(&new_y)
+                    {
+                        return None;
+                    };
+
+                    map.get(&Position {
+                        x: new_x.try_into().unwrap(),
+                        y: new_y.try_into().unwrap(),
                     })
-                    .any(|&v| v == value)
-            },
-        );
+                })
+                .any(|&v| v == value)
+        });
 
-        if !has_move {
-            next_state.set(RunState::GameOver);
-        }
-    };
+    if !has_move {
+        next_state.set(RunState::GameOver);
+    }
 }
 
 fn game_reset(
@@ -546,22 +538,27 @@ mod tests {
     fn gameover_triggers_when_16_tiles_exist() {
         let mut app = App::new();
         let board = Board::new(4);
-        app.insert_resource(Board::new(4))
-            .init_state::<RunState>()
-            .add_systems(Startup, (spawn_board).chain())
-            .add_systems(
-                Update,
-                (
-                    end_game,
-                    // apply_state_transition here is
-                    // optional, but would require an
-                    // additional
-                    // app.update() cycle to run if we
-                    // didn't include it here.
-                    apply_state_transition::<RunState>,
-                )
-                    .chain(),
-            );
+        app.add_plugins((
+            MinimalPlugins,
+            bevy::asset::AssetPlugin::default(),
+            bevy::render::texture::ImagePlugin::default(),
+        ))
+        .insert_resource(Board::new(4))
+        .init_state::<RunState>()
+        .add_systems(Startup, (spawn_board).chain())
+        .add_systems(
+            Update,
+            (
+                end_game,
+                // apply_state_transition here is
+                // optional, but would require an
+                // additional
+                // app.update() cycle to run if we
+                // didn't include it here.
+                apply_state_transition::<RunState>,
+            )
+                .chain(),
+        );
 
         // insert tiles to set up a game
         let mut command_queue = CommandQueue::default();

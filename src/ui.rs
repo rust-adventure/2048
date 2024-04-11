@@ -1,14 +1,7 @@
-use crate::colors;
 use crate::{Game, RunState};
 use bevy::prelude::*;
 
 mod styles;
-
-#[derive(Component)]
-pub struct ScoreDisplay;
-
-#[derive(Component)]
-pub struct BestScoreDisplay;
 
 pub struct GameUiPlugin;
 
@@ -24,6 +17,15 @@ impl Plugin for GameUiPlugin {
         );
     }
 }
+
+#[derive(Component)]
+struct NewGameButtonText;
+
+#[derive(Component)]
+pub struct ScoreDisplay;
+
+#[derive(Component)]
+pub struct BestScoreDisplay;
 
 #[derive(Resource)]
 struct UiAssets {
@@ -58,175 +60,163 @@ fn setup_ui(
         max_corner_scale: 1.0,
     };
 
+    let title = commands
+        .spawn(TextBundle::from_section(
+            "2048",
+            TextStyle {
+                font_size: 40.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        ))
+        .id();
+
+    let score_box = commands
+        .spawn((
+            ImageBundle {
+                style: styles::SCORE_CONTAINER,
+                image: ui_assets.panel.clone().into(),
+                ..default()
+            },
+            ImageScaleMode::Sliced(panel_slicer.clone()),
+        ))
+        .with_children(|parent| {
+            parent.spawn(
+                TextBundle::from_section(
+                    "Score",
+                    TextStyle {
+                        font_size: 25.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                )
+                .with_text_justify(JustifyText::Center),
+            );
+            parent.spawn((
+                TextBundle::from_section(
+                    "<score>",
+                    TextStyle {
+                        font_size: 25.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                )
+                .with_text_justify(JustifyText::Center),
+                ScoreDisplay,
+            ));
+        })
+        .id();
+
+    let highscore_box = commands
+        .spawn((
+            ImageBundle {
+                style: styles::SCORE_CONTAINER,
+                image: ui_assets.panel_green.clone().into(),
+                ..default()
+            },
+            ImageScaleMode::Sliced(panel_slicer),
+        ))
+        .with_children(|parent| {
+            parent.spawn(
+                TextBundle::from_section(
+                    "Best",
+                    TextStyle {
+                        font_size: 25.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                )
+                .with_text_justify(JustifyText::Center),
+            );
+            parent.spawn((
+                TextBundle::from_section(
+                    "<score>",
+                    TextStyle {
+                        font_size: 25.0,
+                        color: Color::WHITE,
+                        ..default()
+                    },
+                )
+                .with_text_justify(JustifyText::Center),
+                BestScoreDisplay,
+            ));
+        })
+        .id();
+
+    let scorebox_container = commands
+        .spawn(NodeBundle {
+            style: Style {
+                justify_content: JustifyContent::Center,
+                column_gap: Val::Px(10.0),
+                row_gap: Val::Px(20.),
+                ..default()
+            },
+            ..default()
+        })
+        .add_child(score_box)
+        .add_child(highscore_box)
+        .id();
+
+    let new_game_button = commands
+        .spawn((
+            ButtonBundle {
+                style: Style {
+                    width: Val::Px(130.0),
+                    height: Val::Px(50.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                image: ui_assets.button.clone().into(),
+                ..default()
+            },
+            ImageScaleMode::Sliced(slicer.clone()),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        "Button",
+                        TextStyle {
+                            font_size: 20.0,
+                            color: Color::rgb(
+                                0.9, 0.9, 0.9,
+                            ),
+                            ..default()
+                        },
+                    ),
+                    ..default()
+                },
+                NewGameButtonText,
+            ));
+        })
+        .id();
+
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                align_items: AlignItems::FlexStart,
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(50.0)),
+                ..default()
+            },
+            ..default()
+        })
+        .add_child(title)
+        .add_child(new_game_button);
+
     commands
         .spawn(NodeBundle {
             style: Style {
                 width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
                 align_items: AlignItems::FlexStart,
-                justify_content:
-                    JustifyContent::SpaceBetween,
+                justify_content: JustifyContent::FlexEnd,
                 padding: UiRect::all(Val::Px(50.0)),
                 ..default()
             },
-            background_color: BackgroundColor(
-                colors::palette::NONE,
-            ),
             ..default()
         })
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section(
-                "2048",
-                TextStyle {
-                    font_size: 40.0,
-                    color: Color::WHITE,
-                    ..default()
-                },
-            ));
-
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        justify_content:
-                            JustifyContent::Center,
-                        width: Val::Auto,
-                        height: Val::Auto,
-                        column_gap: Val::Px(20.0),
-                        row_gap: Val::Px(20.),
-                        ..default()
-                    },
-                    ..default()
-                })
-                .with_children(|parent| {
-                    // scorebox
-                    parent
-                        .spawn((
-                            ImageBundle {
-                                style:
-                                    styles::SCORE_CONTAINER,
-                                image: ui_assets
-                                    .panel
-                                    .clone()
-                                    .into(),
-                                ..default()
-                            },
-                            ImageScaleMode::Sliced(
-                                panel_slicer.clone(),
-                            ),
-                        ))
-                        .with_children(|parent| {
-                            parent.spawn(
-                                TextBundle::from_section(
-                                    "Score",
-                                    TextStyle {
-                                        font_size: 15.0,
-                                        color: Color::WHITE,
-                                        ..default()
-                                    },
-                                )
-                                .with_text_justify(
-                                    JustifyText::Center,
-                                ),
-                            );
-                            parent.spawn((
-                                TextBundle::from_section(
-                                    "<score>",
-                                    TextStyle {
-                                        font_size: 20.0,
-                                        color: Color::WHITE,
-                                        ..default()
-                                    },
-                                )
-                                .with_text_justify(
-                                    JustifyText::Center,
-                                ),
-                                ScoreDisplay,
-                            ));
-                        });
-                    // end scorebox
-                    // best scorebox
-                    parent
-                        .spawn((
-                            ImageBundle {
-                                style:
-                                    styles::SCORE_CONTAINER,
-                                image: ui_assets
-                                    .panel_green
-                                    .clone()
-                                    .into(),
-                                ..default()
-                            },
-                            ImageScaleMode::Sliced(
-                                panel_slicer,
-                            ),
-                        ))
-                        .with_children(|parent| {
-                            parent.spawn(
-                                TextBundle::from_section(
-                                    "Best",
-                                    TextStyle {
-                                        font_size: 15.0,
-                                        color: Color::WHITE,
-                                        ..default()
-                                    },
-                                )
-                                .with_text_justify(
-                                    JustifyText::Center,
-                                ),
-                            );
-                            parent.spawn((
-                                TextBundle::from_section(
-                                    "<score>",
-                                    TextStyle {
-                                        font_size: 20.0,
-                                        color: Color::WHITE,
-                                        ..default()
-                                    },
-                                )
-                                .with_text_justify(
-                                    JustifyText::Center,
-                                ),
-                                BestScoreDisplay,
-                            ));
-                        });
-                    // end best scorebox
-                });
-
-            parent
-                .spawn((
-                    ButtonBundle {
-                        style: Style {
-                            width: Val::Px(130.0),
-                            height: Val::Px(50.0),
-                            justify_content:
-                                JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        image: ui_assets
-                            .button
-                            .clone()
-                            .into(),
-                        ..default()
-                    },
-                    ImageScaleMode::Sliced(slicer.clone()),
-                ))
-                .with_children(|parent| {
-                    parent.spawn(TextBundle {
-                        text: Text::from_section(
-                            "Button",
-                            TextStyle {
-                                font_size: 20.0,
-                                color: Color::rgb(
-                                    0.9, 0.9, 0.9,
-                                ),
-                                ..default()
-                            },
-                        ),
-                        ..default()
-                    });
-                });
-        });
+        .add_child(scorebox_container);
 
     commands.insert_resource(ui_assets);
 }
@@ -238,13 +228,14 @@ fn scoreboard(
         Query<&mut Text, With<BestScoreDisplay>>,
     )>,
 ) {
-    let mut p0 = query_scores.p0();
-    let mut text = p0.single_mut();
-    text.sections[0].value = game.score.to_string();
+    for mut text in query_scores.p0().iter_mut() {
+        text.sections[0].value = game.score.to_string();
+    }
 
-    let mut p1 = query_scores.p1();
-    let mut text = p1.single_mut();
-    text.sections[0].value = game.score_best.to_string();
+    for mut text in query_scores.p1().iter_mut() {
+        text.sections[0].value =
+            game.score_best.to_string();
+    }
 }
 
 fn button_interaction_system(
@@ -295,23 +286,21 @@ fn button_interaction_system(
 }
 
 fn button_text_system(
-    button_query: Query<&Children, With<Button>>,
-    mut text_query: Query<&mut Text>,
+    mut text_query: Query<
+        &mut Text,
+        With<NewGameButtonText>,
+    >,
     run_state: Res<State<RunState>>,
 ) {
-    let children = button_query.single();
-    let mut text =
-        text_query
-            .get_mut(*children.first().expect(
-                "expect button to have a first child",
-            ))
-            .unwrap();
-    match run_state.get() {
-        RunState::Playing => {
-            text.sections[0].value = "End Game".to_string();
-        }
-        RunState::GameOver => {
-            text.sections[0].value = "New Game".to_string();
-        }
-    }
+    let Ok(mut text) = text_query.get_single_mut() else {
+        error!("Expected a single NewGameButtonText");
+        return;
+    };
+
+    let new_text = match run_state.get() {
+        RunState::Playing => "End Game".to_string(),
+        RunState::GameOver => "New Game".to_string(),
+    };
+
+    text.sections[0].value = new_text;
 }
