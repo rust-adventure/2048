@@ -4,6 +4,10 @@ mod colors;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(
+            Color::hex("#1f2638")
+              .expect("developer should have provided a valid hex code")
+        ))
         .insert_resource(Board { size: 4 })
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
