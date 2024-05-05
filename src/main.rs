@@ -9,7 +9,7 @@ fn main() {
             Color::hex("#1f2638")
               .expect("developer should have provided a valid hex code")
         ))
-        .insert_resource(Board { size: 4 })
+        .insert_resource(Board::new(4))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "2048".to_string(),
@@ -27,6 +27,26 @@ const TILE_SPACER: f32 = 10.0;
 #[derive(Resource)]
 struct Board {
     size: u8,
+    physical_size: f32,
+}
+
+impl Board {
+    fn new(size: u8) -> Self {
+        let physical_size = f32::from(size) * TILE_SIZE
+            + f32::from(size + 1) * TILE_SPACER;
+        Board {
+            size,
+            physical_size,
+        }
+    }
+    fn cell_position_to_physical(&self, pos: u8) -> f32 {
+        let offset =
+            -self.physical_size / 2.0 + TILE_SIZE / 2.0;
+
+        offset
+            + f32::from(pos) * TILE_SIZE
+            + f32::from(pos + 1) * TILE_SPACER
+    }
 }
 
 fn setup(mut commands: Commands) {
@@ -34,16 +54,12 @@ fn setup(mut commands: Commands) {
 }
 
 fn spawn_board(mut commands: Commands, board: Res<Board>) {
-    let physical_board_size = f32::from(board.size)
-        * TILE_SIZE
-        + f32::from(board.size + 1) * TILE_SPACER;
-
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
                 color: colors::BOARD,
                 custom_size: Some(Vec2::splat(
-                    physical_board_size,
+                    board.physical_size,
                 )),
                 ..default()
             },
@@ -53,9 +69,6 @@ fn spawn_board(mut commands: Commands, board: Res<Board>) {
             for tile in (0..board.size)
                 .cartesian_product(0..board.size)
             {
-                let offset = -physical_board_size / 2.0
-                    + TILE_SIZE / 2.0;
-
                 builder.spawn(SpriteBundle {
                     sprite: Sprite {
                         color: colors::TILE_PLACEHOLDER,
@@ -65,14 +78,12 @@ fn spawn_board(mut commands: Commands, board: Res<Board>) {
                         ..default()
                     },
                     transform: Transform::from_xyz(
-                        offset
-                            + f32::from(tile.0) * TILE_SIZE
-                            + f32::from(tile.0 + 1)
-                                * TILE_SPACER,
-                        offset
-                            + f32::from(tile.1) * TILE_SIZE
-                            + f32::from(tile.1 + 1)
-                                * TILE_SPACER,
+                        board.cell_position_to_physical(
+                            tile.0,
+                        ),
+                        board.cell_position_to_physical(
+                            tile.1,
+                        ),
                         1.0,
                     ),
                     ..default()
