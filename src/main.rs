@@ -176,7 +176,6 @@ fn main() {
             Update,
             (
                 board_shift,
-                new_tile_handler,
                 render_tile_points,
                 render_tiles,
                 end_game,
@@ -189,6 +188,7 @@ fn main() {
             (game_reset, spawn_tiles),
         )
         .add_event::<NewTileEvent>()
+        .observe(new_tile_handler)
         .run();
 }
 
@@ -307,7 +307,6 @@ fn board_shift(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut tiles: Query<(Entity, &mut Position, &mut Points)>,
-    mut tile_writer: EventWriter<NewTileEvent>,
     mut game: ResMut<Game>,
 ) {
     let shift_direction =
@@ -374,7 +373,8 @@ fn board_shift(
                 }
             }
         }
-        tile_writer.send(NewTileEvent);
+
+        commands.trigger(NewTileEvent);
     }
     if game.score_best < game.score {
         game.score_best = game.score;
@@ -410,41 +410,37 @@ fn render_tiles(
 }
 
 fn new_tile_handler(
-    mut tile_reader: EventReader<NewTileEvent>,
+    _: Trigger<NewTileEvent>,
     mut commands: Commands,
     board: Res<Board>,
     tiles: Query<&Position>,
     asset_server: ResMut<AssetServer>,
 ) {
-    for _event in tile_reader.read() {
-        // insert new tile
-        let mut rng = rand::thread_rng();
-        let possible_position: Option<Position> = board
-            .tiles()
-            .filter_map(|tile_pos| {
-                let new_pos = Position {
-                    x: tile_pos.0,
-                    y: tile_pos.1,
-                };
-                match tiles
-                    .iter()
-                    .find(|&&pos| pos == new_pos)
-                {
-                    Some(_) => None,
-                    None => Some(new_pos),
-                }
-            })
-            .choose(&mut rng);
+    // insert new tile
+    let mut rng = rand::thread_rng();
+    let possible_position: Option<Position> = board
+        .tiles()
+        .filter_map(|tile_pos| {
+            let new_pos = Position {
+                x: tile_pos.0,
+                y: tile_pos.1,
+            };
+            match tiles.iter().find(|&&pos| pos == new_pos)
+            {
+                Some(_) => None,
+                None => Some(new_pos),
+            }
+        })
+        .choose(&mut rng);
 
-        if let Some(pos) = possible_position {
-            spawn_tile(
-                &mut commands,
-                &board,
-                pos,
-                Points { value: 2 },
-                asset_server.load("Outfit-Black.ttf"),
-            );
-        }
+    if let Some(pos) = possible_position {
+        spawn_tile(
+            &mut commands,
+            &board,
+            pos,
+            Points { value: 2 },
+            asset_server.load("Outfit-Black.ttf"),
+        );
     }
 }
 
