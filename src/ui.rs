@@ -1,8 +1,6 @@
 use crate::{Game, RunState};
 use bevy::prelude::*;
 
-mod styles;
-
 pub struct GameUiPlugin;
 
 impl Plugin for GameUiPlugin {
@@ -33,6 +31,7 @@ struct UiAssets {
     button: Handle<Image>,
     panel: Handle<Image>,
     panel_green: Handle<Image>,
+    font: Handle<Font>,
 }
 
 fn setup_ui(
@@ -44,17 +43,18 @@ fn setup_ui(
         button: asset_server.load("button.png"),
         panel_green: asset_server.load("panel_green.png"),
         panel: asset_server.load("panel.png"),
+        font: asset_server.load("Outfit-Black.ttf"),
     };
 
     let slicer = TextureSlicer {
-        border: BorderRect::square(10.0),
+        border: BorderRect::square(15.0),
         center_scale_mode: SliceScaleMode::Stretch,
         sides_scale_mode: SliceScaleMode::Stretch,
         max_corner_scale: 1.0,
     };
 
     let panel_slicer = TextureSlicer {
-        border: BorderRect::square(20.0),
+        border: BorderRect::square(40.0),
         center_scale_mode: SliceScaleMode::Stretch,
         sides_scale_mode: SliceScaleMode::Stretch,
         max_corner_scale: 1.0,
@@ -66,7 +66,7 @@ fn setup_ui(
             TextStyle {
                 font_size: 40.0,
                 color: Color::WHITE,
-                ..default()
+                font: ui_assets.font.clone(),
             },
         ))
         .id();
@@ -74,7 +74,13 @@ fn setup_ui(
     let score_box = commands
         .spawn((
             ImageBundle {
-                style: styles::SCORE_CONTAINER,
+                style: Style {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
+                    min_width: Val::Px(100.),
+                    ..default()
+                },
                 image: ui_assets.panel.clone().into(),
                 ..default()
             },
@@ -85,9 +91,9 @@ fn setup_ui(
                 TextBundle::from_section(
                     "Score",
                     TextStyle {
-                        font_size: 25.0,
+                        font_size: 20.0,
                         color: Color::WHITE,
-                        ..default()
+                        font: ui_assets.font.clone(),
                     },
                 )
                 .with_text_justify(JustifyText::Center),
@@ -98,7 +104,7 @@ fn setup_ui(
                     TextStyle {
                         font_size: 25.0,
                         color: Color::WHITE,
-                        ..default()
+                        font: ui_assets.font.clone(),
                     },
                 )
                 .with_text_justify(JustifyText::Center),
@@ -110,7 +116,13 @@ fn setup_ui(
     let highscore_box = commands
         .spawn((
             ImageBundle {
-                style: styles::SCORE_CONTAINER,
+                style: Style {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
+                    min_width: Val::Px(100.),
+                    ..default()
+                },
                 image: ui_assets.panel_green.clone().into(),
                 ..default()
             },
@@ -121,9 +133,9 @@ fn setup_ui(
                 TextBundle::from_section(
                     "Best",
                     TextStyle {
-                        font_size: 25.0,
+                        font_size: 20.0,
                         color: Color::WHITE,
-                        ..default()
+                        font: ui_assets.font.clone(),
                     },
                 )
                 .with_text_justify(JustifyText::Center),
@@ -134,7 +146,7 @@ fn setup_ui(
                     TextStyle {
                         font_size: 25.0,
                         color: Color::WHITE,
-                        ..default()
+                        font: ui_assets.font.clone(),
                     },
                 )
                 .with_text_justify(JustifyText::Center),
@@ -146,9 +158,10 @@ fn setup_ui(
     let scorebox_container = commands
         .spawn(NodeBundle {
             style: Style {
-                justify_content: JustifyContent::Center,
+                align_self: AlignSelf::FlexEnd,
                 column_gap: Val::Px(10.0),
                 row_gap: Val::Px(20.),
+                height: Val::Px(75.),
                 ..default()
             },
             ..default()
@@ -179,10 +192,10 @@ fn setup_ui(
                         "Button",
                         TextStyle {
                             font_size: 20.0,
-                            color: Color::rgb(
+                            color: Color::srgb(
                                 0.9, 0.9, 0.9,
                             ),
-                            ..default()
+                            font: ui_assets.font.clone(),
                         },
                     ),
                     ..default()
@@ -240,22 +253,18 @@ fn scoreboard(
 
 fn button_interaction_system(
     mut interaction_query: Query<
-        (
-            &Interaction,
-            &mut BackgroundColor,
-            &mut UiImage,
-        ),
+        (&Interaction, &mut UiImage),
         (Changed<Interaction>, With<Button>),
     >,
     run_state: Res<State<RunState>>,
     mut next_state: ResMut<NextState<RunState>>,
     ui_assets: Res<UiAssets>,
 ) {
-    for (interaction, mut color, mut image) in
+    for (interaction, mut image) in
         interaction_query.iter_mut()
     {
-        *color = Color::WHITE.into();
         match (interaction, run_state.get()) {
+            (_, RunState::Startup) => {}
             (Interaction::Pressed, RunState::Playing) => {
                 *image = ui_assets.button.clone().into();
                 next_state.set(RunState::GameOver);
@@ -266,13 +275,15 @@ fn button_interaction_system(
                 next_state.set(RunState::Playing);
             }
             (Interaction::Hovered, RunState::Playing) => {
-                *color = Color::WHITE.with_a(0.8).into();
                 *image =
                     ui_assets.button_red.clone().into();
+                // tint button slightly darker
+                image.color = Color::srgb(0.9, 0.9, 0.9);
             }
             (Interaction::Hovered, RunState::GameOver) => {
-                *color = Color::WHITE.with_a(0.8).into();
                 *image = ui_assets.button.clone().into();
+                // tint button slightly darker
+                image.color = Color::srgb(0.9, 0.9, 0.9);
             }
             (Interaction::None, RunState::Playing) => {
                 *image =
@@ -298,7 +309,9 @@ fn button_text_system(
     };
 
     let new_text = match run_state.get() {
-        RunState::Playing => "End Game".to_string(),
+        RunState::Playing | RunState::Startup => {
+            "End Game".to_string()
+        }
         RunState::GameOver => "New Game".to_string(),
     };
 

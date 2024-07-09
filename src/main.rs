@@ -5,14 +5,13 @@ use std::{
     ops::Range,
 };
 
-use bevy::prelude::*;
+use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
 
 mod ui;
 use ui::*;
-mod colors;
 
 const TILE_SIZE: f32 = 40.0;
 const TILE_SPACER: f32 = 10.0;
@@ -146,6 +145,7 @@ struct Game {
 )]
 enum RunState {
     #[default]
+    Startup,
     Playing,
     GameOver,
 }
@@ -153,7 +153,7 @@ enum RunState {
 fn main() {
     App::new()
         .insert_resource(ClearColor(
-            Color::hex("#1f2638").unwrap(),
+            Srgba::hex("#1f2638").unwrap().into(),
         ))
         .insert_resource(Board::new(4))
         .add_plugins((
@@ -169,7 +169,10 @@ fn main() {
         ))
         .init_resource::<Game>()
         .init_state::<RunState>()
-        .add_systems(Startup, (setup, spawn_board).chain())
+        .add_systems(
+            OnEnter(RunState::Startup),
+            (setup, spawn_board, start_play).chain(),
+        )
         .add_systems(
             Update,
             (
@@ -187,11 +190,24 @@ fn main() {
             (game_reset, spawn_tiles),
         )
         .add_event::<NewTileEvent>()
-        .run()
+        .run();
+}
+
+fn start_play(mut next_state: ResMut<NextState<RunState>>) {
+    next_state.set(RunState::Playing);
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle {
+        projection: OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical(600.),
+            far: 1000.,
+            near: -1000.,
+            ..default()
+        },
+        transform: Transform::from_xyz(0., 100., 1.),
+        ..default()
+    });
 }
 
 fn spawn_board(
@@ -217,15 +233,15 @@ fn spawn_board(
                 },
                 ..default()
             },
-            ImageScaleMode::Sliced(
-                panel_slicer.clone(),
-            ),
+            ImageScaleMode::Sliced(panel_slicer.clone()),
         ))
         .with_children(|builder| {
             for tile in board.tiles() {
                 builder.spawn(SpriteBundle {
                     sprite: Sprite {
-                        color: colors::palette::TILE_PLACEHOLDER,
+                        color: Color::srgb(
+                            0.54, 0.64, 0.72,
+                        ),
                         custom_size: Some(Vec2::splat(
                             TILE_SIZE,
                         )),
@@ -246,7 +262,11 @@ fn spawn_board(
         });
 }
 
-fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
+fn spawn_tiles(
+    mut commands: Commands,
+    board: Res<Board>,
+    asset_server: ResMut<AssetServer>,
+) {
     let mut rng = rand::thread_rng();
     let starting_tiles: Vec<(u8, u8)> =
         board.tiles().choose_multiple(&mut rng, 2);
@@ -257,6 +277,7 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
             &board,
             pos,
             Points { value: 2 },
+            asset_server.load("Outfit-Black.ttf"),
         );
     }
 }
@@ -394,6 +415,7 @@ fn new_tile_handler(
     mut commands: Commands,
     board: Res<Board>,
     tiles: Query<&Position>,
+    asset_server: ResMut<AssetServer>,
 ) {
     for _event in tile_reader.read() {
         // insert new tile
@@ -421,6 +443,7 @@ fn new_tile_handler(
                 &board,
                 pos,
                 Points { value: 2 },
+                asset_server.load("Outfit-Black.ttf"),
             );
         }
     }
@@ -431,12 +454,13 @@ fn spawn_tile(
     board: &Board,
     pos: Position,
     points: Points,
+    font: Handle<Font>,
 ) {
     commands
         .spawn((
             SpriteBundle {
                 sprite: Sprite {
-                    color: colors::palette::TILE,
+                    color: Color::srgb(0.63, 0.74, 0.83),
                     custom_size: Some(Vec2::splat(
                         TILE_SIZE,
                     )),
@@ -460,7 +484,7 @@ fn spawn_tile(
                         TextStyle {
                             font_size: 40.0,
                             color: Color::BLACK,
-                            ..default()
+                            font: font,
                         },
                     )
                     .with_justify(JustifyText::Center),
@@ -530,7 +554,7 @@ fn game_reset(
 
 #[cfg(test)]
 mod tests {
-    use bevy::ecs::system::CommandQueue;
+    use bevy::ecs::world::CommandQueue;
 
     use super::*;
 
@@ -540,31 +564,24 @@ mod tests {
         let board = Board::new(4);
         app.add_plugins((
             MinimalPlugins,
+            bevy::state::app::StatesPlugin,
             bevy::asset::AssetPlugin::default(),
             bevy::render::texture::ImagePlugin::default(),
         ))
         .insert_resource(Board::new(4))
         .init_state::<RunState>()
-        .add_systems(Startup, (spawn_board).chain())
         .add_systems(
-            Update,
-            (
-                end_game,
-                // apply_state_transition here is
-                // optional, but would require an
-                // additional
-                // app.update() cycle to run if we
-                // didn't include it here.
-                apply_state_transition::<RunState>,
-            )
-                .chain(),
-        );
+            OnEnter(RunState::Startup),
+            (spawn_board, start_play).chain(),
+        )
+        .add_systems(Update, end_game);
 
         // insert tiles to set up a game
         let mut command_queue = CommandQueue::default();
 
         let mut commands =
-            Commands::new(&mut command_queue, &app.world);
+            Commands::new(&mut command_queue, app.world());
+
         for (i, (x, y)) in board.tiles().enumerate() {
             spawn_tile(
                 &mut commands,
@@ -573,10 +590,11 @@ mod tests {
                 Points {
                     value: 2_u32.pow(i as u32),
                 },
+                Handle::default(),
             );
         }
 
-        command_queue.apply(&mut app.world);
+        command_queue.apply(app.world_mut());
 
         // Run systems to insert tiles.
         // Game over is also detected immediately, but the
@@ -584,9 +602,10 @@ mod tests {
         // it is inserted by `apply_state_transition`
         // system
         app.update();
+        app.world_mut().run_schedule(StateTransition);
 
         let state = app
-            .world
+            .world()
             .get_resource::<State<RunState>>()
             .expect("state to be inserted");
 
