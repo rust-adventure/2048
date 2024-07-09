@@ -1,14 +1,13 @@
+use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy_easings::*;
+use itertools::Itertools;
+use rand::prelude::*;
 use std::{
     cmp::Ordering,
     collections::HashMap,
     convert::{TryFrom, TryInto},
     ops::Range,
 };
-
-use bevy::{prelude::*, render::camera::ScalingMode};
-use bevy_easings::*;
-use itertools::Itertools;
-use rand::prelude::*;
 
 mod ui;
 use ui::*;
