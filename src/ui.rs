@@ -64,7 +64,7 @@ fn setup_ui(
         .spawn(TextBundle::from_section(
             "2048",
             TextStyle {
-                font_size: 40.0,
+                font_size: 66.0,
                 color: Color::WHITE,
                 font: ui_assets.font.clone(),
             },

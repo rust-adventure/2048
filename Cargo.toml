@@ -16,3 +16,6 @@ rand = "0.8.5"
 [lints.clippy]
 type_complexity = "allow"
 too_many_arguments = "allow"
+
+[features]
+default = ["bevy/bevy_dev_tools"]

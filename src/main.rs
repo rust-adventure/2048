@@ -1,4 +1,7 @@
-use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy::{
+    dev_tools::states::log_transitions, math::U16Vec2,
+    prelude::*, render::camera::ScalingMode,
+};
 use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
@@ -6,43 +9,46 @@ use std::{
     cmp::Ordering,
     collections::HashMap,
     convert::{TryFrom, TryInto},
-    ops::Range,
 };
 
 mod ui;
 use ui::*;
-
-const TILE_SIZE: f32 = 40.0;
-const TILE_SPACER: f32 = 10.0;
 
 #[derive(Event)]
 struct NewTileEvent;
 
 #[derive(Resource)]
 struct Board {
-    size: u8,
+    size: u16,
     physical_size: f32,
+    tile_size: f32,
+    tile_spacer: f32,
 }
 
 impl Board {
-    fn new(size: u8) -> Self {
-        let physical_size = f32::from(size) * TILE_SIZE
-            + f32::from(size + 1) * TILE_SPACER;
+    fn new(size: u16) -> Self {
+        let tile_size: f32 = 40.0;
+        let tile_spacer: f32 = 10.0;
+
+        let physical_size = f32::from(size) * tile_size
+            + f32::from(size + 1) * tile_spacer;
         Board {
             size,
             physical_size,
+            tile_size,
+            tile_spacer,
         }
     }
-    fn cell_position_to_physical(&self, pos: u8) -> f32 {
-        let offset =
-            -self.physical_size / 2.0 + 0.5 * TILE_SIZE;
+    fn grid_to_world_position(&self, pos: u16) -> f32 {
+        let offset = -self.physical_size / 2.0
+            + 0.5 * self.tile_size;
 
         offset
-            + f32::from(pos) * TILE_SIZE
-            + f32::from(pos + 1) * TILE_SPACER
+            + f32::from(pos) * self.tile_size
+            + f32::from(pos + 1) * self.tile_spacer
     }
 
-    fn tiles(&self) -> impl Iterator<Item = (u8, u8)> {
+    fn tiles(&self) -> impl Iterator<Item = (u16, u16)> {
         (0..self.size).cartesian_product(0..self.size)
     }
 }
@@ -53,12 +59,17 @@ struct Points {
 }
 
 #[derive(
-    Debug, PartialEq, Copy, Clone, Eq, Hash, Component,
+    Debug,
+    PartialEq,
+    Copy,
+    Clone,
+    Eq,
+    Hash,
+    Component,
+    Deref,
+    DerefMut,
 )]
-struct Position {
-    x: u8,
-    y: u8,
-}
+struct Position(U16Vec2);
 
 #[derive(Component)]
 pub struct TileText;
@@ -89,9 +100,9 @@ impl BoardShift {
     }
     fn set_column_position(
         &self,
-        board_size: u8,
-        position: &mut Mut<Position>,
-        index: u8,
+        board_size: u16,
+        position: &mut Position,
+        index: u16,
     ) {
         match self {
             BoardShift::Left => {
@@ -108,7 +119,7 @@ impl BoardShift {
             }
         }
     }
-    fn get_row_position(&self, position: &Position) -> u8 {
+    fn get_row_position(&self, position: &Position) -> u16 {
         match self {
             BoardShift::Left | BoardShift::Right => {
                 position.y
@@ -189,6 +200,8 @@ fn main() {
         )
         .add_event::<NewTileEvent>()
         .observe(new_tile_handler)
+        .add_systems(Update, log_transitions::<RunState>)
+        .enable_state_scoped_entities::<RunState>()
         .run();
 }
 
@@ -242,17 +255,15 @@ fn spawn_board(
                             0.54, 0.64, 0.72,
                         ),
                         custom_size: Some(Vec2::splat(
-                            TILE_SIZE,
+                            board.tile_size,
                         )),
                         ..default()
                     },
                     transform: Transform::from_xyz(
-                        board.cell_position_to_physical(
-                            tile.0,
-                        ),
-                        board.cell_position_to_physical(
-                            tile.1,
-                        ),
+                        board
+                            .grid_to_world_position(tile.0),
+                        board
+                            .grid_to_world_position(tile.1),
                         1.0,
                     ),
                     ..default()
@@ -267,10 +278,10 @@ fn spawn_tiles(
     asset_server: ResMut<AssetServer>,
 ) {
     let mut rng = rand::thread_rng();
-    let starting_tiles: Vec<(u8, u8)> =
+    let starting_tiles: Vec<(u16, u16)> =
         board.tiles().choose_multiple(&mut rng, 2);
-    for (x, y) in starting_tiles.iter() {
-        let pos = Position { x: *x, y: *y };
+    for (x, y) in starting_tiles.into_iter() {
+        let pos = Position(U16Vec2::new(x, y));
         spawn_tile(
             &mut commands,
             &board,
@@ -319,7 +330,7 @@ fn board_shift(
             .iter_mut()
             .sorted_by(|a, b| board_shift.sort(&a.1, &b.1))
             .peekable();
-        let mut column: u8 = 0;
+        let mut column: u16 = 0;
 
         while let Some(mut tile) = it.next() {
             board_shift.set_column_position(
@@ -390,8 +401,8 @@ fn render_tiles(
     board: Res<Board>,
 ) {
     for (entity, transform, pos) in tiles.iter() {
-        let x = board.cell_position_to_physical(pos.x);
-        let y = board.cell_position_to_physical(pos.y);
+        let x = board.grid_to_world_position(pos.x);
+        let y = board.grid_to_world_position(pos.y);
 
         commands.entity(entity).insert(transform.ease_to(
             Transform::from_xyz(
@@ -421,11 +432,8 @@ fn new_tile_handler(
     let possible_position: Option<Position> = board
         .tiles()
         .filter_map(|tile_pos| {
-            let new_pos = Position {
-                x: tile_pos.0,
-                y: tile_pos.1,
-            };
-            match tiles.iter().find(|&&pos| pos == new_pos)
+            let new_pos = Position(U16Vec2::from(tile_pos));
+            match tiles.iter().find(|pos| pos == &&new_pos)
             {
                 Some(_) => None,
                 None => Some(new_pos),
@@ -457,19 +465,20 @@ fn spawn_tile(
                 sprite: Sprite {
                     color: Color::srgb(0.63, 0.74, 0.83),
                     custom_size: Some(Vec2::splat(
-                        TILE_SIZE,
+                        board.tile_size,
                     )),
                     ..default()
                 },
                 transform: Transform::from_xyz(
-                    board.cell_position_to_physical(pos.x),
-                    board.cell_position_to_physical(pos.y),
+                    board.grid_to_world_position(pos.x),
+                    board.grid_to_world_position(pos.y),
                     2.0,
                 ),
                 ..default()
             },
             points,
             pos,
+            StateScoped(RunState::GameOver),
         ))
         .with_children(|child_builder| {
             child_builder.spawn((
@@ -495,38 +504,30 @@ fn spawn_tile(
 
 fn end_game(
     tiles: Query<(&Position, &Points)>,
-    board: Res<Board>,
     mut next_state: ResMut<NextState<RunState>>,
 ) {
     if tiles.iter().len() != 16 {
+        // if the board isn't full, we by definition have more
+        // moves, so continue playing.
         return;
     }
 
     let map: HashMap<&Position, &Points> =
         tiles.iter().collect();
 
-    let neighbor_points =
-        [(-1, 0), (0, 1), (1, 0), (0, -1)];
-    let board_range: Range<i8> = 0..(board.size as i8);
+    let neighbor_offsets =
+        [IVec2::NEG_X, IVec2::X, IVec2::Y, IVec2::NEG_Y];
 
+    // if any tile is next to a tile with the same point
+    // value, then there is a valid move available
     let has_move =
-        tiles.iter().any(|(Position { x, y }, value)| {
-            neighbor_points
-                .iter()
-                .filter_map(|(x2, y2)| {
-                    let new_x = *x as i8 - x2;
-                    let new_y = *y as i8 - y2;
-
-                    if !board_range.contains(&new_x)
-                        || !board_range.contains(&new_y)
-                    {
-                        return None;
-                    };
-
-                    map.get(&Position {
-                        x: new_x.try_into().unwrap(),
-                        y: new_y.try_into().unwrap(),
-                    })
+        tiles.iter().any(|(Position(current), value)| {
+            neighbor_offsets
+                .into_iter()
+                .filter_map(|neighbor_offset| {
+                    let new = current.as_ivec2()
+                        - neighbor_offset;
+                    map.get(&Position(new.try_into().ok()?))
                 })
                 .any(|&v| v == value)
         });
@@ -536,14 +537,7 @@ fn end_game(
     }
 }
 
-fn game_reset(
-    mut commands: Commands,
-    tiles: Query<Entity, With<Position>>,
-    mut game: ResMut<Game>,
-) {
-    for entity in tiles.iter() {
-        commands.entity(entity).despawn_recursive();
-    }
+fn game_reset(mut game: ResMut<Game>) {
     game.score = 0;
 }
 
@@ -581,7 +575,7 @@ mod tests {
             spawn_tile(
                 &mut commands,
                 &board,
-                Position { x, y },
+                Position(U16Vec2::new(x, y)),
                 Points {
                     value: 2_u32.pow(i as u32),
                 },
