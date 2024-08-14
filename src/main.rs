@@ -1,6 +1,7 @@
 use bevy::{
-    dev_tools::states::log_transitions, math::U16Vec2,
-    prelude::*, render::camera::ScalingMode,
+    dev_tools::states::log_transitions,
+    ecs::world::Command, math::U16Vec2, prelude::*,
+    render::camera::ScalingMode,
 };
 use bevy_easings::*;
 use itertools::Itertools;
@@ -17,7 +18,7 @@ use ui::*;
 #[derive(Event)]
 struct NewTileEvent;
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 struct Board {
     size: u16,
     physical_size: f32,
@@ -272,23 +273,15 @@ fn spawn_board(
         });
 }
 
-fn spawn_tiles(
-    mut commands: Commands,
-    board: Res<Board>,
-    asset_server: ResMut<AssetServer>,
-) {
+fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
     let mut rng = rand::thread_rng();
     let starting_tiles: Vec<(u16, u16)> =
         board.tiles().choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.into_iter() {
-        let pos = Position(U16Vec2::new(x, y));
-        spawn_tile(
-            &mut commands,
-            &board,
-            pos,
-            Points { value: 2 },
-            asset_server.load("Outfit-Black.ttf"),
-        );
+        commands.add(SpawnTile {
+            pos: Position(U16Vec2::new(x, y)),
+            points: Points { value: 2 },
+        });
     }
 }
 
@@ -425,7 +418,6 @@ fn new_tile_handler(
     mut commands: Commands,
     board: Res<Board>,
     tiles: Query<&Position>,
-    asset_server: ResMut<AssetServer>,
 ) {
     // insert new tile
     let mut rng = rand::thread_rng();
@@ -442,64 +434,11 @@ fn new_tile_handler(
         .choose(&mut rng);
 
     if let Some(pos) = possible_position {
-        spawn_tile(
-            &mut commands,
-            &board,
+        commands.add(SpawnTile {
             pos,
-            Points { value: 2 },
-            asset_server.load("Outfit-Black.ttf"),
-        );
-    }
-}
-
-fn spawn_tile(
-    commands: &mut Commands,
-    board: &Board,
-    pos: Position,
-    points: Points,
-    font: Handle<Font>,
-) {
-    commands
-        .spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: Color::srgb(0.63, 0.74, 0.83),
-                    custom_size: Some(Vec2::splat(
-                        board.tile_size,
-                    )),
-                    ..default()
-                },
-                transform: Transform::from_xyz(
-                    board.grid_to_world_position(pos.x),
-                    board.grid_to_world_position(pos.y),
-                    2.0,
-                ),
-                ..default()
-            },
-            points,
-            pos,
-            StateScoped(RunState::GameOver),
-        ))
-        .with_children(|child_builder| {
-            child_builder.spawn((
-                Text2dBundle {
-                    text: Text::from_section(
-                        "2",
-                        TextStyle {
-                            font_size: 40.0,
-                            color: Color::BLACK,
-                            font: font,
-                        },
-                    )
-                    .with_justify(JustifyText::Center),
-                    transform: Transform::from_xyz(
-                        0.0, 0.0, 1.0,
-                    ),
-                    ..default()
-                },
-                TileText,
-            ));
+            points: Points { value: 2 },
         });
+    }
 }
 
 fn end_game(
@@ -541,6 +480,84 @@ fn game_reset(mut game: ResMut<Game>) {
     game.score = 0;
 }
 
+struct SpawnTile {
+    pos: Position,
+    points: Points,
+}
+
+impl Command for SpawnTile {
+    fn apply(self, world: &mut World) {
+        let board = {
+            let Some(board) = world.get_resource::<Board>()
+            else {
+                warn!("SpawnTile command requires a Res<Board> to exist");
+                return;
+            };
+            board.clone()
+        };
+
+        let Some(asset_server) =
+            world.get_resource::<AssetServer>()
+        else {
+            warn!(
+                "Spawning a tile requires an AssetServer to exist"
+            );
+            return;
+        };
+
+        let font = asset_server.load("Outfit-Black.ttf");
+
+        world
+            .commands()
+            .spawn((
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::srgb(
+                            0.63, 0.74, 0.83,
+                        ),
+                        custom_size: Some(Vec2::splat(
+                            board.tile_size,
+                        )),
+                        ..default()
+                    },
+                    transform: Transform::from_xyz(
+                        board.grid_to_world_position(
+                            self.pos.x,
+                        ),
+                        board.grid_to_world_position(
+                            self.pos.y,
+                        ),
+                        2.0,
+                    ),
+                    ..default()
+                },
+                self.points,
+                self.pos,
+                StateScoped(RunState::GameOver),
+            ))
+            .with_children(|child_builder| {
+                child_builder.spawn((
+                    Text2dBundle {
+                        text: Text::from_section(
+                            "2",
+                            TextStyle {
+                                font_size: 40.0,
+                                color: Color::BLACK,
+                                font: font,
+                            },
+                        )
+                        .with_justify(JustifyText::Center),
+                        transform: Transform::from_xyz(
+                            0.0, 0.0, 1.0,
+                        ),
+                        ..default()
+                    },
+                    TileText,
+                ));
+            });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::ecs::world::CommandQueue;
@@ -557,6 +574,7 @@ mod tests {
             bevy::asset::AssetPlugin::default(),
             bevy::render::texture::ImagePlugin::default(),
         ))
+        .init_asset::<Font>()
         .insert_resource(Board::new(4))
         .init_state::<RunState>()
         .add_systems(
@@ -572,15 +590,12 @@ mod tests {
             Commands::new(&mut command_queue, app.world());
 
         for (i, (x, y)) in board.tiles().enumerate() {
-            spawn_tile(
-                &mut commands,
-                &board,
-                Position(U16Vec2::new(x, y)),
-                Points {
+            commands.add(SpawnTile {
+                pos: Position(U16Vec2::new(x, y)),
+                points: Points {
                     value: 2_u32.pow(i as u32),
                 },
-                Handle::default(),
-            );
+            });
         }
 
         command_queue.apply(app.world_mut());
