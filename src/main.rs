@@ -62,6 +62,9 @@ struct Points {
 #[derive(Component)]
 struct Position(U16Vec2);
 
+#[derive(Component)]
+struct TileText;
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
@@ -113,24 +116,51 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
 
     for (x, y) in starting_tiles.into_iter() {
         let pos = Position(U16Vec2::new(x, y));
-        commands.spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: Color::srgb(0.84, 0.89, 0.93),
-                    custom_size: Some(Vec2::splat(
-                        board.tile_size,
-                    )),
+        commands
+            .spawn((
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::srgb(
+                            0.84, 0.89, 0.93,
+                        ),
+                        custom_size: Some(Vec2::splat(
+                            board.tile_size,
+                        )),
+                        ..default()
+                    },
+                    transform: Transform::from_xyz(
+                        board.grid_to_world_position(
+                            pos.0.x,
+                        ),
+                        board.grid_to_world_position(
+                            pos.0.y,
+                        ),
+                        1.0,
+                    ),
                     ..default()
                 },
-                transform: Transform::from_xyz(
-                    board.grid_to_world_position(pos.0.x),
-                    board.grid_to_world_position(pos.0.y),
-                    1.0,
-                ),
-                ..default()
-            },
-            Points { value: 2 },
-            pos,
-        ));
+                Points { value: 2 },
+                pos,
+            ))
+            .with_children(|child_builder| {
+                child_builder.spawn((
+                    Text2dBundle {
+                        text: Text::from_section(
+                            "2",
+                            TextStyle {
+                                font_size: 40.0,
+                                color: Color::BLACK,
+                                ..default()
+                            },
+                        )
+                        .with_justify(JustifyText::Center),
+                        transform: Transform::from_xyz(
+                            0.0, 0.0, 1.0,
+                        ),
+                        ..default()
+                    },
+                    TileText,
+                ));
+            });
     }
 }
