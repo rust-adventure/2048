@@ -1,5 +1,8 @@
-use bevy::{color::palettes::tailwind::*, prelude::*};
+use bevy::{
+    color::palettes::tailwind::*, math::U16Vec2, prelude::*,
+};
 use itertools::Itertools;
+use rand::prelude::*;
 
 fn main() {
     App::new()
@@ -15,7 +18,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_systems(Startup, (setup, spawn_board))
+        .add_systems(Startup, (setup, spawn_board, spawn_tiles))
         .run();
 }
 
@@ -50,6 +53,14 @@ impl Board {
             + f32::from(pos + 1) * self.tile_spacer
     }
 }
+
+#[derive(Component)]
+struct Points {
+    value: u32,
+}
+
+#[derive(Component)]
+struct Position(U16Vec2);
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
@@ -92,4 +103,34 @@ fn spawn_board(mut commands: Commands, board: Res<Board>) {
                 });
             }
         });
+}
+
+fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
+    let mut rng = rand::thread_rng();
+    let starting_tiles: Vec<(u16, u16)> = (0..board.size)
+        .cartesian_product(0..board.size)
+        .choose_multiple(&mut rng, 2);
+
+    for (x, y) in starting_tiles.into_iter() {
+        let pos = Position(U16Vec2::new(x, y));
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: Color::srgb(0.84, 0.89, 0.93),
+                    custom_size: Some(Vec2::splat(
+                        board.tile_size,
+                    )),
+                    ..default()
+                },
+                transform: Transform::from_xyz(
+                    board.grid_to_world_position(pos.0.x),
+                    board.grid_to_world_position(pos.0.y),
+                    1.0,
+                ),
+                ..default()
+            },
+            Points { value: 2 },
+            pos,
+        ));
+    }
 }
