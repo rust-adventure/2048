@@ -7,7 +7,7 @@ fn main() {
             Color::from(Srgba::hex("#1f2638")
                 .expect("developer should have provided a valid hex code"))
         ))
-        .insert_resource(Board { size: 4 })
+        .insert_resource(Board::new(4))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "2048".to_string(),
@@ -19,9 +19,36 @@ fn main() {
         .run();
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 struct Board {
     size: u16,
+    world_size: f32,
+    tile_size: f32,
+    tile_spacer: f32,
+}
+
+impl Board {
+    fn new(size: u16) -> Self {
+        let tile_size: f32 = 40.0;
+        let tile_spacer: f32 = 10.0;
+
+        let world_size = f32::from(size) * tile_size
+            + f32::from(size + 1) * tile_spacer;
+        Board {
+            size,
+            world_size,
+            tile_size,
+            tile_spacer,
+        }
+    }
+    fn grid_to_world_position(&self, pos: u16) -> f32 {
+        let offset =
+            -self.world_size / 2.0 + 0.5 * self.tile_size;
+
+        offset
+            + f32::from(pos) * self.tile_size
+            + f32::from(pos + 1) * self.tile_spacer
+    }
 }
 
 fn setup(mut commands: Commands) {
@@ -29,27 +56,18 @@ fn setup(mut commands: Commands) {
 }
 
 fn spawn_board(mut commands: Commands, board: Res<Board>) {
-    let tile_size = 40.;
-    let tile_spacer = 10.;
-    let board_world_size = f32::from(board.size)
-        * tile_size
-        + f32::from(board.size + 1) * tile_spacer;
-
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
                 color: Color::from(SLATE_900),
                 custom_size: Some(Vec2::splat(
-                    board_world_size,
+                    board.world_size,
                 )),
                 ..default()
             },
             ..default()
         })
         .with_children(|builder| {
-            let offset =
-                -board_world_size / 2.0 + tile_size / 2.0;
-
             for tile in (0..board.size)
                 .cartesian_product(0..board.size)
             {
@@ -59,19 +77,15 @@ fn spawn_board(mut commands: Commands, board: Res<Board>) {
                             0.54, 0.64, 0.72,
                         ),
                         custom_size: Some(Vec2::splat(
-                            tile_size,
+                            board.tile_size,
                         )),
                         ..default()
                     },
                     transform: Transform::from_xyz(
-                        offset
-                            + f32::from(tile.0) * tile_size
-                            + f32::from(tile.0 + 1)
-                                * tile_spacer,
-                        offset
-                            + f32::from(tile.1) * tile_size
-                            + f32::from(tile.1 + 1)
-                                * tile_spacer,
+                        board
+                            .grid_to_world_position(tile.0),
+                        board
+                            .grid_to_world_position(tile.1),
                         1.0,
                     ),
                     ..default()
