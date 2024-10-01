@@ -1,4 +1,5 @@
 use bevy::{color::palettes::tailwind::*, prelude::*};
+use itertools::Itertools;
 
 fn main() {
     App::new()
@@ -29,17 +30,52 @@ fn setup(mut commands: Commands) {
 
 fn spawn_board(mut commands: Commands, board: Res<Board>) {
     let tile_size = 40.;
-    let board_world_size =
-        f32::from(board.size) * tile_size;
+    let tile_spacer = 10.;
+    let board_world_size = f32::from(board.size)
+        * tile_size
+        + f32::from(board.size + 1) * tile_spacer;
 
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: Color::from(SLATE_900),
-            custom_size: Some(Vec2::splat(
-                board_world_size,
-            )),
+    commands
+        .spawn(SpriteBundle {
+            sprite: Sprite {
+                color: Color::from(SLATE_900),
+                custom_size: Some(Vec2::splat(
+                    board_world_size,
+                )),
+                ..default()
+            },
             ..default()
-        },
-        ..default()
-    });
+        })
+        .with_children(|builder| {
+            let offset =
+                -board_world_size / 2.0 + tile_size / 2.0;
+
+            for tile in (0..board.size)
+                .cartesian_product(0..board.size)
+            {
+                builder.spawn(SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::srgb(
+                            0.54, 0.64, 0.72,
+                        ),
+                        custom_size: Some(Vec2::splat(
+                            tile_size,
+                        )),
+                        ..default()
+                    },
+                    transform: Transform::from_xyz(
+                        offset
+                            + f32::from(tile.0) * tile_size
+                            + f32::from(tile.0 + 1)
+                                * tile_spacer,
+                        offset
+                            + f32::from(tile.1) * tile_size
+                            + f32::from(tile.1 + 1)
+                                * tile_spacer,
+                        1.0,
+                    ),
+                    ..default()
+                });
+            }
+        });
 }
