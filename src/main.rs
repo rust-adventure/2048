@@ -19,7 +19,7 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, (setup, spawn_board, spawn_tiles))
-        .add_systems(Update, sync_tile_points)
+        .add_systems(Update, (sync_tile_points, board_shift))
         .run();
 }
 
@@ -65,6 +65,29 @@ struct Position(U16Vec2);
 
 #[derive(Component)]
 struct TileText;
+
+#[derive(Debug)]
+enum BoardShift {
+    Left,
+    Right,
+    Up,
+    Down,
+}
+impl TryFrom<&KeyCode> for BoardShift {
+    type Error = &'static str;
+
+    fn try_from(
+        value: &KeyCode,
+    ) -> Result<Self, Self::Error> {
+        match value {
+            KeyCode::ArrowLeft => Ok(BoardShift::Left),
+            KeyCode::ArrowUp => Ok(BoardShift::Up),
+            KeyCode::ArrowRight => Ok(BoardShift::Right),
+            KeyCode::ArrowDown => Ok(BoardShift::Down),
+            _ => Err("not a valid board_shift key"),
+        }
+    }
+}
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
@@ -184,4 +207,16 @@ fn sync_tile_points(
             1.0 / points.value.to_string().len() as f32,
         ));
     }
+}
+
+fn board_shift(input: Res<ButtonInput<KeyCode>>) {
+    let Some(shift_direction) =
+        input.get_just_pressed().find_map(|key_code| {
+            BoardShift::try_from(key_code).ok()
+        })
+    else {
+        return;
+    };
+
+    dbg!(shift_direction);
 }
