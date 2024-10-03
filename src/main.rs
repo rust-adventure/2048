@@ -19,6 +19,7 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, (setup, spawn_board, spawn_tiles))
+        .add_systems(Update, sync_tile_points)
         .run();
 }
 
@@ -162,5 +163,25 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
                     TileText,
                 ));
             });
+    }
+}
+
+fn sync_tile_points(
+    mut texts: Query<
+        (&mut Text, &mut Transform, &Parent),
+        With<TileText>,
+    >,
+    tiles: Query<&Points>,
+) {
+    for (mut text, mut transform, parent) in &mut texts {
+        let Ok(points) = tiles.get(parent.get()) else {
+            warn!("An entity with TileText should have a parent with a Points component");
+            continue;
+        };
+
+        text.sections[0].value = points.value.to_string();
+        *transform = transform.with_scale(Vec3::splat(
+            1.0 / points.value.to_string().len() as f32,
+        ));
     }
 }
