@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use bevy::{
     color::palettes::tailwind::*, math::U16Vec2, prelude::*,
 };
@@ -55,12 +57,12 @@ impl Board {
     }
 }
 
-#[derive(Component)]
+#[derive(Debug, Component)]
 struct Points {
     value: u32,
 }
 
-#[derive(Component)]
+#[derive(Debug, Component)]
 struct Position(U16Vec2);
 
 #[derive(Component)]
@@ -209,7 +211,10 @@ fn sync_tile_points(
     }
 }
 
-fn board_shift(input: Res<ButtonInput<KeyCode>>) {
+fn board_shift(
+    input: Res<ButtonInput<KeyCode>>,
+    mut tiles: Query<(Entity, &mut Position, &mut Points)>,
+) {
     let Some(shift_direction) =
         input.get_just_pressed().find_map(|key_code| {
             BoardShift::try_from(key_code).ok()
@@ -218,5 +223,21 @@ fn board_shift(input: Res<ButtonInput<KeyCode>>) {
         return;
     };
 
-    dbg!(shift_direction);
+    dbg!(&shift_direction);
+    match shift_direction {
+        BoardShift::Left => {
+            let mut it =
+                tiles.iter_mut().sorted_by(|a, b| {
+                    match Ord::cmp(&a.1 .0.y, &b.1 .0.y) {
+                        Ordering::Equal => {
+                            Ord::cmp(&a.1 .0.x, &b.1 .0.x)
+                        }
+                        ordering => ordering,
+                    }
+                });
+        }
+        _ => {
+            unimplemented!()
+        }
+    }
 }
