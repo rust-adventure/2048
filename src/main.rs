@@ -21,7 +21,7 @@ fn main() {
             ..default()
         }))
         .add_systems(Startup, (setup, spawn_board, spawn_tiles))
-        .add_systems(Update, (sync_tile_points, board_shift))
+        .add_systems(Update, (sync_tile_points, board_shift, sync_tile_positions))
         .run();
 }
 
@@ -282,5 +282,20 @@ fn board_shift(
         _ => {
             unimplemented!()
         }
+    }
+}
+
+fn sync_tile_positions(
+    mut tiles: Query<
+        (&mut Transform, &Position),
+        Changed<Position>,
+    >,
+    board: Res<Board>,
+) {
+    for (mut transform, pos) in &mut tiles {
+        transform.translation.x =
+            board.grid_to_world_position(pos.0.x);
+        transform.translation.y =
+            board.grid_to_world_position(pos.0.y);
     }
 }
