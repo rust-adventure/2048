@@ -3,7 +3,7 @@ use bevy::{
     ecs::world::Command, math::U16Vec2, prelude::*,
     render::camera::ScalingMode,
 };
-use bevy_easings::*;
+// use bevy_easings::*;
 use itertools::Itertools;
 use rand::prelude::*;
 use std::{
@@ -175,7 +175,7 @@ fn main() {
                 }),
                 ..default()
             }),
-            EasingsPlugin,
+            // EasingsPlugin,
             GameUiPlugin,
         ))
         .init_resource::<Game>()
@@ -200,7 +200,7 @@ fn main() {
             (game_reset, spawn_tiles),
         )
         .add_event::<NewTileEvent>()
-        .observe(new_tile_handler)
+        .add_observer(new_tile_handler)
         .add_systems(Update, log_transitions::<RunState>)
         .enable_state_scoped_entities::<RunState>()
         .run();
@@ -211,16 +211,16 @@ fn start_play(mut next_state: ResMut<NextState<RunState>>) {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle {
-        projection: OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical(600.),
-            far: 1000.,
-            near: -1000.,
-            ..default()
+    commands.spawn((
+        Camera2d,
+        OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical {
+                viewport_height: 600.,
+            },
+            ..OrthographicProjection::default_2d()
         },
-        transform: Transform::from_xyz(0., 100., 1.),
-        ..default()
-    });
+        Transform::from_xyz(0., 100., 1.),
+    ));
 }
 
 fn spawn_board(
@@ -236,22 +236,19 @@ fn spawn_board(
     };
     commands
         .spawn((
-            SpriteBundle {
-                texture: asset_server.load("panel.png"),
-                sprite: Sprite {
-                    custom_size: Some(Vec2::splat(
-                        board.physical_size + 70.,
-                    )),
-                    ..default()
-                },
+            Sprite {
+                image: asset_server.load("panel.png"),
+                custom_size: Some(Vec2::splat(
+                    board.physical_size + 70.,
+                )),
                 ..default()
             },
             ImageScaleMode::Sliced(panel_slicer.clone()),
         ))
         .with_children(|builder| {
             for tile in board.tiles() {
-                builder.spawn(SpriteBundle {
-                    sprite: Sprite {
+                builder.spawn((
+                    Sprite {
                         color: Color::srgb(
                             0.54, 0.64, 0.72,
                         ),
@@ -260,15 +257,14 @@ fn spawn_board(
                         )),
                         ..default()
                     },
-                    transform: Transform::from_xyz(
+                    Transform::from_xyz(
                         board
                             .grid_to_world_position(tile.0),
                         board
                             .grid_to_world_position(tile.1),
                         1.0,
                     ),
-                    ..default()
-                });
+                ));
             }
         });
 }
@@ -278,7 +274,7 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
     let starting_tiles: Vec<(u16, u16)> =
         board.tiles().choose_multiple(&mut rng, 2);
     for (x, y) in starting_tiles.into_iter() {
-        commands.add(SpawnTile {
+        commands.queue(SpawnTile {
             pos: Position(U16Vec2::new(x, y)),
             points: Points { value: 2 },
         });
@@ -287,18 +283,21 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
 
 fn render_tile_points(
     mut texts: Query<
-        (&mut Text, &mut Transform),
-        With<TileText>,
+        &mut Transform,
+        (With<Text2d>, With<TileText>),
     >,
+    mut writer: Text2dWriter,
     tiles: Query<(&Points, &Children)>,
 ) {
     for (points, children) in tiles.iter() {
         if let Some(entity) = children.first() {
-            let (mut text, mut transform) = texts
+            let mut transform = texts
                 .get_mut(*entity)
                 .expect("expected Text to exist");
-            text.sections[0].value =
+
+            *writer.text(*entity, 0) =
                 points.value.to_string();
+
             *transform = transform.with_scale(Vec3::splat(
                 1.0 / points.value.to_string().len() as f32,
             ));
@@ -397,19 +396,26 @@ fn render_tiles(
         let x = board.grid_to_world_position(pos.x);
         let y = board.grid_to_world_position(pos.y);
 
-        commands.entity(entity).insert(transform.ease_to(
+        commands.entity(entity).insert(
             Transform::from_xyz(
                 x,
                 y,
                 transform.translation.z,
             ),
-            EaseFunction::QuadraticInOut,
-            EasingType::Once {
-                duration: std::time::Duration::from_millis(
-                    100,
-                ),
-            },
-        ));
+        );
+        // commands.entity(entity).insert(transform.ease_to(
+        //     Transform::from_xyz(
+        //         x,
+        //         y,
+        //         transform.translation.z,
+        //     ),
+        //     EaseFunction::QuadraticInOut,
+        //     EasingType::Once {
+        //         duration: std::time::Duration::from_millis(
+        //             100,
+        //         ),
+        //     },
+        // ));
     }
 }
 
@@ -434,7 +440,7 @@ fn new_tile_handler(
         .choose(&mut rng);
 
     if let Some(pos) = possible_position {
-        commands.add(SpawnTile {
+        commands.queue(SpawnTile {
             pos,
             points: Points { value: 2 },
         });
@@ -510,48 +516,38 @@ impl Command for SpawnTile {
         world
             .commands()
             .spawn((
-                SpriteBundle {
-                    sprite: Sprite {
-                        color: Color::srgb(
-                            0.63, 0.74, 0.83,
-                        ),
-                        custom_size: Some(Vec2::splat(
-                            board.tile_size,
-                        )),
-                        ..default()
-                    },
-                    transform: Transform::from_xyz(
-                        board.grid_to_world_position(
-                            self.pos.x,
-                        ),
-                        board.grid_to_world_position(
-                            self.pos.y,
-                        ),
-                        2.0,
-                    ),
+                Sprite {
+                    color: Color::srgb(0.63, 0.74, 0.83),
+                    custom_size: Some(Vec2::splat(
+                        board.tile_size,
+                    )),
                     ..default()
                 },
+                Transform::from_xyz(
+                    board
+                        .grid_to_world_position(self.pos.x),
+                    board
+                        .grid_to_world_position(self.pos.y),
+                    2.0,
+                ),
                 self.points,
                 self.pos,
                 StateScoped(RunState::GameOver),
             ))
             .with_children(|child_builder| {
                 child_builder.spawn((
-                    Text2dBundle {
-                        text: Text::from_section(
-                            "2",
-                            TextStyle {
-                                font_size: 40.0,
-                                color: Color::BLACK,
-                                font: font,
-                            },
-                        )
-                        .with_justify(JustifyText::Center),
-                        transform: Transform::from_xyz(
-                            0.0, 0.0, 1.0,
-                        ),
+                    Text2d("2".to_string()),
+                    TextFont {
+                        font,
+                        font_size: 40.,
                         ..default()
                     },
+                    TextColor(Color::BLACK),
+                    TextLayout {
+                        justify: JustifyText::Center,
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 1.0),
                     TileText,
                 ));
             });
@@ -590,7 +586,7 @@ mod tests {
             Commands::new(&mut command_queue, app.world());
 
         for (i, (x, y)) in board.tiles().enumerate() {
-            commands.add(SpawnTile {
+            commands.queue(SpawnTile {
                 pos: Position(U16Vec2::new(x, y)),
                 points: Points {
                     value: 2_u32.pow(i as u32),
