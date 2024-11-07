@@ -23,8 +23,6 @@ pub struct BestScoreDisplay;
 
 #[derive(Resource)]
 struct UiAssets {
-    button_red: Handle<Image>,
-    button: Handle<Image>,
     font: Handle<Font>,
 }
 
@@ -34,16 +32,7 @@ fn setup_ui(
     run_state: Res<State<RunState>>,
 ) {
     let ui_assets = UiAssets {
-        button_red: asset_server.load("button_red.png"),
-        button: asset_server.load("button.png"),
         font: asset_server.load("Outfit-Black.ttf"),
-    };
-
-    let slicer = TextureSlicer {
-        border: BorderRect::square(15.0),
-        center_scale_mode: SliceScaleMode::Stretch,
-        sides_scale_mode: SliceScaleMode::Stretch,
-        max_corner_scale: 1.0,
     };
 
     let score_box = commands
@@ -138,19 +127,12 @@ fn setup_ui(
                 ..default()
             },
             Button,
-            UiImage::from(match run_state.get() {
-                RunState::Playing => {
-                    ui_assets.button_red.clone()
-                }
+            BackgroundColor::from(match run_state.get() {
+                RunState::Playing => RED_800,
 
-                RunState::GameOver => {
-                    ui_assets.button.clone()
-                }
-                RunState::Startup => {
-                    ui_assets.button_red.clone()
-                }
+                RunState::GameOver => BLUE_800,
+                RunState::Startup => RED_800,
             }),
-            ImageScaleMode::Sliced(slicer.clone()),
         ))
         .with_children(|parent| {
             parent
@@ -161,7 +143,7 @@ fn setup_ui(
                         font_size: 20.0,
                         ..default()
                     },
-                    TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                    TextColor(SLATE_50.into()),
                     PickingBehavior::IGNORE,
                 ))
                 .with_child((
@@ -171,27 +153,16 @@ fn setup_ui(
         })
         .observe(
             |trigger: Trigger<Pointer<Over>>,
-             mut images: Query<&mut UiImage>,
-             run_state: Res<State<RunState>>,
-             ui_assets: Res<UiAssets>| {
-                let mut image =
-                    images.get_mut(trigger.target).unwrap();
+             mut colors: Query<&mut BackgroundColor>,
+             run_state: Res<State<RunState>>| {
+                let mut color =
+                    colors.get_mut(trigger.target).unwrap();
                 match run_state.get() {
                     RunState::Playing => {
-                        *image = ui_assets
-                            .button_red
-                            .clone()
-                            .into();
-                        // tint button slightly darker
-                        image.color =
-                            Color::srgb(0.9, 0.9, 0.9);
+                        color.0 = RED_700.into();
                     }
                     RunState::GameOver => {
-                        *image =
-                            ui_assets.button.clone().into();
-                        // tint button slightly darker
-                        image.color =
-                            Color::srgb(0.9, 0.9, 0.9);
+                        color.0 = BLUE_700.into();
                     }
                     RunState::Startup => {}
                 }
@@ -199,22 +170,17 @@ fn setup_ui(
         )
         .observe(
             |trigger: Trigger<Pointer<Out>>,
-             mut images: Query<&mut UiImage>,
-             run_state: Res<State<RunState>>,
-             ui_assets: Res<UiAssets>| {
-                let mut image =
-                    images.get_mut(trigger.target).unwrap();
+             mut colors: Query<&mut BackgroundColor>,
+             run_state: Res<State<RunState>>| {
+                let mut color =
+                    colors.get_mut(trigger.target).unwrap();
                 match run_state.get() {
                     RunState::Playing => {
-                        *image = ui_assets
-                            .button_red
-                            .clone()
-                            .into();
+                        color.0 = RED_800.into();
                     }
 
                     RunState::GameOver => {
-                        *image =
-                            ui_assets.button.clone().into();
+                        color.0 = BLUE_800.into();
                     }
                     RunState::Startup => {}
                 }
@@ -222,25 +188,20 @@ fn setup_ui(
         )
         .observe(
             |trigger: Trigger<Pointer<Click>>,
-             mut images: Query<&mut UiImage>,
+             mut colors: Query<&mut BackgroundColor>,
              run_state: Res<State<RunState>>,
              mut next_state: ResMut<
                 NextState<RunState>,
-            >,
-             ui_assets: Res<UiAssets>| {
-                let mut image =
-                    images.get_mut(trigger.target).unwrap();
+            >| {
+                let mut color =
+                    colors.get_mut(trigger.target).unwrap();
                 match run_state.get() {
                     RunState::Playing => {
-                        *image =
-                            ui_assets.button.clone().into();
+                        color.0 = BLUE_700.into();
                         next_state.set(RunState::GameOver);
                     }
                     RunState::GameOver => {
-                        *image = ui_assets
-                            .button_red
-                            .clone()
-                            .into();
+                        color.0 = RED_700.into();
                         next_state.set(RunState::Playing);
                     }
                     RunState::Startup => {}
