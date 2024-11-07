@@ -212,8 +212,9 @@ fn setup_ui(
 
     commands
         .spawn(Node {
-            align_items: AlignItems::FlexStart,
-            flex_direction: FlexDirection::Column,
+            width: Val::Percent(100.0),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::SpaceBetween,
             padding: UiRect::all(Val::Px(50.0)),
             ..default()
         })
@@ -226,17 +227,8 @@ fn setup_ui(
                 ..default()
             },
         ))
+        .add_child(scorebox_container)
         .add_child(new_game_button);
-
-    commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            align_items: AlignItems::FlexStart,
-            justify_content: JustifyContent::FlexEnd,
-            padding: UiRect::all(Val::Px(50.0)),
-            ..default()
-        })
-        .add_child(scorebox_container);
 
     commands.insert_resource(ui_assets);
 }
