@@ -281,6 +281,8 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
     }
 }
 
+// TODO: Find TileText on the right entity
+// then iter_ancestors to find Points
 fn render_tile_points(
     mut texts: Query<
         &mut Transform,

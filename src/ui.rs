@@ -1,5 +1,5 @@
 use crate::{Game, RunState};
-use bevy::prelude::*;
+use bevy::{color::palettes::tailwind::*, prelude::*};
 
 pub struct GameUiPlugin;
 
@@ -7,11 +7,7 @@ impl Plugin for GameUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_ui).add_systems(
             Update,
-            (
-                scoreboard,
-                button_interaction_system,
-                button_text_system,
-            ),
+            (scoreboard, button_text_system),
         );
     }
 }
@@ -29,20 +25,17 @@ pub struct BestScoreDisplay;
 struct UiAssets {
     button_red: Handle<Image>,
     button: Handle<Image>,
-    panel: Handle<Image>,
-    panel_green: Handle<Image>,
     font: Handle<Font>,
 }
 
 fn setup_ui(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
+    run_state: Res<State<RunState>>,
 ) {
     let ui_assets = UiAssets {
         button_red: asset_server.load("button_red.png"),
         button: asset_server.load("button.png"),
-        panel_green: asset_server.load("panel_green.png"),
-        panel: asset_server.load("panel.png"),
         font: asset_server.load("Outfit-Black.ttf"),
     };
 
@@ -53,25 +46,6 @@ fn setup_ui(
         max_corner_scale: 1.0,
     };
 
-    let panel_slicer = TextureSlicer {
-        border: BorderRect::square(40.0),
-        center_scale_mode: SliceScaleMode::Stretch,
-        sides_scale_mode: SliceScaleMode::Stretch,
-        max_corner_scale: 1.0,
-    };
-
-    let title = commands
-        .spawn((
-            Text("2048".to_string()),
-            TextColor(Color::WHITE),
-            TextFont {
-                font: ui_assets.font.clone(),
-                font_size: 66.0,
-                ..default()
-            },
-        ))
-        .id();
-
     let score_box = commands
         .spawn((
             Node {
@@ -81,35 +55,27 @@ fn setup_ui(
                 min_width: Val::Px(100.),
                 ..default()
             },
-            UiImage::from(ui_assets.panel.clone()),
-            ImageScaleMode::Sliced(panel_slicer.clone()),
+            BackgroundColor(SLATE_600.into()),
+            BorderRadius::all(Val::Px(10.)),
+        ))
+        .with_child((
+            Text("Score ".to_string()),
+            TextFont {
+                font: ui_assets.font.clone(),
+                font_size: 20.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
         ))
         .with_children(|parent| {
-            parent.spawn((
-                Text("Score".to_string()),
-                TextFont {
-                    font: ui_assets.font.clone(),
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-                TextLayout {
-                    justify: JustifyText::Center,
-                    ..default()
-                },
-            ));
-            parent.spawn((
-                Text("<score>".to_string()),
+            parent.spawn(Text::default()).with_child((
+                TextSpan("<score>".to_string()),
                 TextFont {
                     font: ui_assets.font.clone(),
                     font_size: 25.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
-                TextLayout {
-                    justify: JustifyText::Center,
-                    ..default()
-                },
                 ScoreDisplay,
             ));
         })
@@ -124,35 +90,27 @@ fn setup_ui(
                 min_width: Val::Px(100.),
                 ..default()
             },
-            UiImage::from(ui_assets.panel_green.clone()),
-            ImageScaleMode::Sliced(panel_slicer.clone()),
+            BackgroundColor(SLATE_700.into()),
+            BorderRadius::all(Val::Px(10.)),
+        ))
+        .with_child((
+            Text("Best".to_string()),
+            TextFont {
+                font: ui_assets.font.clone(),
+                font_size: 20.0,
+                ..default()
+            },
+            TextColor(Color::WHITE),
         ))
         .with_children(|parent| {
-            parent.spawn((
-                Text("Best".to_string()),
-                TextFont {
-                    font: ui_assets.font.clone(),
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-                TextLayout {
-                    justify: JustifyText::Center,
-                    ..default()
-                },
-            ));
-            parent.spawn((
-                Text("<score>".to_string()),
+            parent.spawn(Text::default()).with_child((
+                TextSpan("<score>".to_string()),
                 TextFont {
                     font: ui_assets.font.clone(),
                     font_size: 25.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
-                TextLayout {
-                    justify: JustifyText::Center,
-                    ..default()
-                },
                 BestScoreDisplay,
             ));
         })
@@ -180,22 +138,115 @@ fn setup_ui(
                 ..default()
             },
             Button,
-            UiImage::from(ui_assets.button.clone()),
+            UiImage::from(match run_state.get() {
+                RunState::Playing => {
+                    ui_assets.button_red.clone()
+                }
+
+                RunState::GameOver => {
+                    ui_assets.button.clone()
+                }
+                RunState::Startup => {
+                    ui_assets.button_red.clone()
+                }
+            }),
             ImageScaleMode::Sliced(slicer.clone()),
         ))
         .with_children(|parent| {
-            parent.spawn((
-                Text("Button".to_string()),
-                TextFont {
-                    font: ui_assets.font.clone(),
-
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.9, 0.9, 0.9)),
-                NewGameButtonText,
-            ));
+            parent
+                .spawn((
+                    Text::default(),
+                    TextFont {
+                        font: ui_assets.font.clone(),
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                    PickingBehavior::IGNORE,
+                ))
+                .with_child((
+                    TextSpan("New Game".to_string()),
+                    NewGameButtonText,
+                ));
         })
+        .observe(
+            |trigger: Trigger<Pointer<Over>>,
+             mut images: Query<&mut UiImage>,
+             run_state: Res<State<RunState>>,
+             ui_assets: Res<UiAssets>| {
+                let mut image =
+                    images.get_mut(trigger.target).unwrap();
+                match run_state.get() {
+                    RunState::Playing => {
+                        *image = ui_assets
+                            .button_red
+                            .clone()
+                            .into();
+                        // tint button slightly darker
+                        image.color =
+                            Color::srgb(0.9, 0.9, 0.9);
+                    }
+                    RunState::GameOver => {
+                        *image =
+                            ui_assets.button.clone().into();
+                        // tint button slightly darker
+                        image.color =
+                            Color::srgb(0.9, 0.9, 0.9);
+                    }
+                    RunState::Startup => {}
+                }
+            },
+        )
+        .observe(
+            |trigger: Trigger<Pointer<Out>>,
+             mut images: Query<&mut UiImage>,
+             run_state: Res<State<RunState>>,
+             ui_assets: Res<UiAssets>| {
+                let mut image =
+                    images.get_mut(trigger.target).unwrap();
+                match run_state.get() {
+                    RunState::Playing => {
+                        *image = ui_assets
+                            .button_red
+                            .clone()
+                            .into();
+                    }
+
+                    RunState::GameOver => {
+                        *image =
+                            ui_assets.button.clone().into();
+                    }
+                    RunState::Startup => {}
+                }
+            },
+        )
+        .observe(
+            |trigger: Trigger<Pointer<Click>>,
+             mut images: Query<&mut UiImage>,
+             run_state: Res<State<RunState>>,
+             mut next_state: ResMut<
+                NextState<RunState>,
+            >,
+             ui_assets: Res<UiAssets>| {
+                let mut image =
+                    images.get_mut(trigger.target).unwrap();
+                match run_state.get() {
+                    RunState::Playing => {
+                        *image =
+                            ui_assets.button.clone().into();
+                        next_state.set(RunState::GameOver);
+                    }
+                    RunState::GameOver => {
+                        *image = ui_assets
+                            .button_red
+                            .clone()
+                            .into();
+                        next_state.set(RunState::Playing);
+                    }
+                    RunState::Startup => {}
+                }
+            },
+        )
         .id();
 
     commands
@@ -205,7 +256,15 @@ fn setup_ui(
             padding: UiRect::all(Val::Px(50.0)),
             ..default()
         })
-        .add_child(title)
+        .with_child((
+            Text("2048".to_string()),
+            TextColor(Color::WHITE),
+            TextFont {
+                font: ui_assets.font.clone(),
+                font_size: 66.0,
+                ..default()
+            },
+        ))
         .add_child(new_game_button);
 
     commands
@@ -223,75 +282,32 @@ fn setup_ui(
 
 fn scoreboard(
     game: Res<Game>,
-    mut query_scores: ParamSet<(
-        Query<Entity, With<ScoreDisplay>>,
-        Query<Entity, With<BestScoreDisplay>>,
-    )>,
-    mut writer: TextUiWriter,
-) {
-    for text_entity in query_scores.p0().iter_mut() {
-        *writer.text(text_entity, 0) =
-            game.score.to_string();
-    }
-
-    for text_entity in query_scores.p1().iter_mut() {
-        *writer.text(text_entity, 0) =
-            game.score_best.to_string();
-    }
-}
-
-fn button_interaction_system(
-    mut interaction_query: Query<
-        (&Interaction, &mut UiImage),
-        (Changed<Interaction>, With<Button>),
+    mut scores: Query<&mut TextSpan, With<ScoreDisplay>>,
+    mut scores_best: Query<
+        &mut TextSpan,
+        (
+            With<BestScoreDisplay>,
+            Without<ScoreDisplay>,
+        ),
     >,
-    run_state: Res<State<RunState>>,
-    mut next_state: ResMut<NextState<RunState>>,
-    ui_assets: Res<UiAssets>,
 ) {
-    for (interaction, mut image) in
-        interaction_query.iter_mut()
-    {
-        match (interaction, run_state.get()) {
-            (_, RunState::Startup) => {}
-            (Interaction::Pressed, RunState::Playing) => {
-                *image = ui_assets.button.clone().into();
-                next_state.set(RunState::GameOver);
-            }
-            (Interaction::Pressed, RunState::GameOver) => {
-                *image =
-                    ui_assets.button_red.clone().into();
-                next_state.set(RunState::Playing);
-            }
-            (Interaction::Hovered, RunState::Playing) => {
-                *image =
-                    ui_assets.button_red.clone().into();
-                // tint button slightly darker
-                image.color = Color::srgb(0.9, 0.9, 0.9);
-            }
-            (Interaction::Hovered, RunState::GameOver) => {
-                *image = ui_assets.button.clone().into();
-                // tint button slightly darker
-                image.color = Color::srgb(0.9, 0.9, 0.9);
-            }
-            (Interaction::None, RunState::Playing) => {
-                *image =
-                    ui_assets.button_red.clone().into();
-            }
-            (Interaction::None, RunState::GameOver) => {
-                *image = ui_assets.button.clone().into();
-            }
-        }
+    for mut span in scores.iter_mut() {
+        span.0 = game.score.to_string();
+    }
+
+    for mut span in scores_best.iter_mut() {
+        span.0 = game.score_best.to_string();
     }
 }
 
 fn button_text_system(
-    mut text_query: Query<Entity, With<NewGameButtonText>>,
+    mut text_query: Query<
+        &mut TextSpan,
+        With<NewGameButtonText>,
+    >,
     run_state: Res<State<RunState>>,
-    mut writer: TextUiWriter,
 ) {
-    let Ok(text_entity) = text_query.get_single_mut()
-    else {
+    let Ok(mut span) = text_query.get_single_mut() else {
         error!("Expected a single NewGameButtonText");
         return;
     };
@@ -303,5 +319,5 @@ fn button_text_system(
         RunState::GameOver => "New Game".to_string(),
     };
 
-    *writer.text(text_entity, 0) = new_text;
+    span.0 = new_text;
 }
