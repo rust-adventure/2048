@@ -21,19 +21,12 @@ pub struct ScoreDisplay;
 #[derive(Component)]
 pub struct BestScoreDisplay;
 
-#[derive(Resource)]
-struct UiAssets {
-    font: Handle<Font>,
-}
-
 fn setup_ui(
     mut commands: Commands,
     asset_server: ResMut<AssetServer>,
     run_state: Res<State<RunState>>,
 ) {
-    let ui_assets = UiAssets {
-        font: asset_server.load("Outfit-Black.ttf"),
-    };
+    let font = asset_server.load("Outfit-Black.ttf");
 
     let score_box = commands
         .spawn((
@@ -50,7 +43,7 @@ fn setup_ui(
         .with_child((
             Text("Score ".to_string()),
             TextFont {
-                font: ui_assets.font.clone(),
+                font: font.clone(),
                 font_size: 20.0,
                 ..default()
             },
@@ -60,7 +53,7 @@ fn setup_ui(
             parent.spawn(Text::default()).with_child((
                 TextSpan("<score>".to_string()),
                 TextFont {
-                    font: ui_assets.font.clone(),
+                    font: font.clone(),
                     font_size: 25.0,
                     ..default()
                 },
@@ -85,7 +78,7 @@ fn setup_ui(
         .with_child((
             Text("Best".to_string()),
             TextFont {
-                font: ui_assets.font.clone(),
+                font: font.clone(),
                 font_size: 20.0,
                 ..default()
             },
@@ -95,7 +88,7 @@ fn setup_ui(
             parent.spawn(Text::default()).with_child((
                 TextSpan("<score>".to_string()),
                 TextFont {
-                    font: ui_assets.font.clone(),
+                    font: font.clone(),
                     font_size: 25.0,
                     ..default()
                 },
@@ -139,7 +132,7 @@ fn setup_ui(
                 .spawn((
                     Text::default(),
                     TextFont {
-                        font: ui_assets.font.clone(),
+                        font: font.clone(),
                         font_size: 20.0,
                         ..default()
                     },
@@ -222,15 +215,13 @@ fn setup_ui(
             Text("2048".to_string()),
             TextColor(Color::WHITE),
             TextFont {
-                font: ui_assets.font.clone(),
+                font: font.clone(),
                 font_size: 66.0,
                 ..default()
             },
         ))
         .add_child(scorebox_container)
         .add_child(new_game_button);
-
-    commands.insert_resource(ui_assets);
 }
 
 fn scoreboard(
