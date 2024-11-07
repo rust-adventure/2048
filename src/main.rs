@@ -1,4 +1,5 @@
 use bevy::{
+    color::palettes::tailwind::*,
     dev_tools::states::log_transitions,
     ecs::world::Command, math::U16Vec2, prelude::*,
     render::camera::ScalingMode,
@@ -28,7 +29,7 @@ struct Board {
 
 impl Board {
     fn new(size: u16) -> Self {
-        let tile_size: f32 = 40.0;
+        let tile_size: f32 = 80.0;
         let tile_spacer: f32 = 10.0;
 
         let physical_size = f32::from(size) * tile_size
@@ -223,35 +224,20 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-fn spawn_board(
-    mut commands: Commands,
-    asset_server: ResMut<AssetServer>,
-    board: Res<Board>,
-) {
-    let panel_slicer = TextureSlicer {
-        border: BorderRect::square(20.0),
-        center_scale_mode: SliceScaleMode::Stretch,
-        sides_scale_mode: SliceScaleMode::Stretch,
-        max_corner_scale: 1.0,
-    };
+fn spawn_board(mut commands: Commands, board: Res<Board>) {
     commands
-        .spawn((
-            Sprite {
-                image: asset_server.load("panel.png"),
-                custom_size: Some(Vec2::splat(
-                    board.physical_size + 70.,
-                )),
-                ..default()
-            },
-            ImageScaleMode::Sliced(panel_slicer.clone()),
-        ))
+        .spawn((Sprite {
+            custom_size: Some(Vec2::splat(
+                board.physical_size,
+            )),
+            color: SLATE_600.into(),
+            ..default()
+        },))
         .with_children(|builder| {
             for tile in board.tiles() {
                 builder.spawn((
                     Sprite {
-                        color: Color::srgb(
-                            0.54, 0.64, 0.72,
-                        ),
+                        color: SLATE_500.into(),
                         custom_size: Some(Vec2::splat(
                             board.tile_size,
                         )),
@@ -519,7 +505,7 @@ impl Command for SpawnTile {
             .commands()
             .spawn((
                 Sprite {
-                    color: Color::srgb(0.63, 0.74, 0.83),
+                    color: SLATE_400.into(),
                     custom_size: Some(Vec2::splat(
                         board.tile_size,
                     )),
@@ -541,7 +527,7 @@ impl Command for SpawnTile {
                     Text2d("2".to_string()),
                     TextFont {
                         font,
-                        font_size: 40.,
+                        font_size: 80.,
                         ..default()
                     },
                     TextColor(Color::BLACK),
