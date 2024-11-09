@@ -7,7 +7,11 @@ impl Plugin for GameUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_ui).add_systems(
             Update,
-            (scoreboard, button_text_system),
+            (
+                scoreboard,
+                button_interaction_system,
+                button_text_system,
+            ),
         );
     }
 }
@@ -122,7 +126,6 @@ fn setup_ui(
             Button,
             BackgroundColor::from(match run_state.get() {
                 RunState::Playing => RED_800,
-
                 RunState::GameOver => BLUE_800,
                 RunState::Startup => RED_800,
             }),
@@ -145,56 +148,16 @@ fn setup_ui(
                 ));
         })
         .observe(
-            |trigger: Trigger<Pointer<Over>>,
-             mut colors: Query<&mut BackgroundColor>,
-             run_state: Res<State<RunState>>| {
-                let mut color =
-                    colors.get_mut(trigger.target).unwrap();
-                match run_state.get() {
-                    RunState::Playing => {
-                        color.0 = RED_700.into();
-                    }
-                    RunState::GameOver => {
-                        color.0 = BLUE_700.into();
-                    }
-                    RunState::Startup => {}
-                }
-            },
-        )
-        .observe(
-            |trigger: Trigger<Pointer<Out>>,
-             mut colors: Query<&mut BackgroundColor>,
-             run_state: Res<State<RunState>>| {
-                let mut color =
-                    colors.get_mut(trigger.target).unwrap();
-                match run_state.get() {
-                    RunState::Playing => {
-                        color.0 = RED_800.into();
-                    }
-
-                    RunState::GameOver => {
-                        color.0 = BLUE_800.into();
-                    }
-                    RunState::Startup => {}
-                }
-            },
-        )
-        .observe(
-            |trigger: Trigger<Pointer<Click>>,
-             mut colors: Query<&mut BackgroundColor>,
+            |_trigger: Trigger<Pointer<Click>>,
              run_state: Res<State<RunState>>,
              mut next_state: ResMut<
                 NextState<RunState>,
             >| {
-                let mut color =
-                    colors.get_mut(trigger.target).unwrap();
                 match run_state.get() {
                     RunState::Playing => {
-                        color.0 = BLUE_700.into();
                         next_state.set(RunState::GameOver);
                     }
                     RunState::GameOver => {
-                        color.0 = RED_700.into();
                         next_state.set(RunState::Playing);
                     }
                     RunState::Startup => {}
@@ -241,6 +204,40 @@ fn scoreboard(
 
     for mut span in scores_best.iter_mut() {
         span.0 = game.score_best.to_string();
+    }
+}
+
+fn button_interaction_system(
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    run_state: Res<State<RunState>>,
+) {
+    for (interaction, mut background_color) in
+        interaction_query.iter_mut()
+    {
+        match (interaction, run_state.get()) {
+            (_, RunState::Startup) => {}
+            (Interaction::Pressed, RunState::Playing) => {
+                *background_color = RED_900.into();
+            }
+            (Interaction::Pressed, RunState::GameOver) => {
+                *background_color = BLUE_900.into();
+            }
+            (Interaction::Hovered, RunState::Playing) => {
+                *background_color = RED_700.into();
+            }
+            (Interaction::Hovered, RunState::GameOver) => {
+                *background_color = BLUE_700.into();
+            }
+            (Interaction::None, RunState::Playing) => {
+                *background_color = RED_800.into();
+            }
+            (Interaction::None, RunState::GameOver) => {
+                *background_color = BLUE_800.into();
+            }
+        }
     }
 }
 
