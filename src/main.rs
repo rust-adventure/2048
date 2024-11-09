@@ -181,10 +181,7 @@ fn main() {
         ))
         .init_resource::<Game>()
         .init_state::<RunState>()
-        .add_systems(
-            OnEnter(RunState::Startup),
-            (setup, spawn_board, start_play).chain(),
-        )
+        .add_systems(OnEnter(RunState::Startup), setup)
         .add_systems(
             Update,
             (
@@ -207,11 +204,11 @@ fn main() {
         .run();
 }
 
-fn start_play(mut next_state: ResMut<NextState<RunState>>) {
-    next_state.set(RunState::Playing);
-}
-
-fn setup(mut commands: Commands) {
+fn setup(
+    mut commands: Commands,
+    board: Res<Board>,
+    mut next_state: ResMut<NextState<RunState>>,
+) {
     commands.spawn((
         Camera2d,
         OrthographicProjection {
@@ -222,9 +219,7 @@ fn setup(mut commands: Commands) {
         },
         Transform::from_xyz(0., 100., 1.),
     ));
-}
 
-fn spawn_board(mut commands: Commands, board: Res<Board>) {
     commands
         .spawn((Sprite {
             custom_size: Some(Vec2::splat(
@@ -253,6 +248,8 @@ fn spawn_board(mut commands: Commands, board: Res<Board>) {
                 ));
             }
         });
+
+    next_state.set(RunState::Playing);
 }
 
 fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
@@ -561,11 +558,11 @@ mod tests {
         .init_asset::<Font>()
         .insert_resource(Board::new(4))
         .init_state::<RunState>()
+        .add_systems(OnEnter(RunState::Startup), setup)
         .add_systems(
-            OnEnter(RunState::Startup),
-            (spawn_board, start_play).chain(),
-        )
-        .add_systems(Update, end_game);
+            Update,
+            end_game.run_if(in_state(RunState::Playing)),
+        );
 
         // insert tiles to set up a game
         let mut command_queue = CommandQueue::default();
