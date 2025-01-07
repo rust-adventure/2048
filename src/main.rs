@@ -24,7 +24,7 @@ struct NewTileEvent;
 #[derive(Resource, Clone)]
 struct Board {
     size: u16,
-    physical_size: f32,
+    world_size: f32,
     tile_size: f32,
     tile_spacer: f32,
 }
@@ -34,18 +34,18 @@ impl Board {
         let tile_size: f32 = 80.0;
         let tile_spacer: f32 = 10.0;
 
-        let physical_size = f32::from(size) * tile_size
+        let world_size = f32::from(size) * tile_size
             + f32::from(size + 1) * tile_spacer;
         Board {
             size,
-            physical_size,
+            world_size,
             tile_size,
             tile_spacer,
         }
     }
     fn grid_to_world_position(&self, pos: u16) -> f32 {
-        let offset = -self.physical_size / 2.0
-            + 0.5 * self.tile_size;
+        let offset =
+            -self.world_size / 2.0 + 0.5 * self.tile_size;
 
         offset
             + f32::from(pos) * self.tile_size
@@ -201,11 +201,17 @@ fn main() {
         )
         .add_event::<NewTileEvent>()
         .add_observer(new_tile_handler)
+        // optional logging to view state transitions
         .add_systems(Update, log_transitions::<RunState>)
         .enable_state_scoped_entities::<RunState>()
         .run();
 }
 
+/// Spawn a 2d camera with a specific vertical size
+/// in world units. The Transform moves the camera
+/// into a position where the vertical size fits the
+/// board near the bottom of the screen, with some space
+/// at the top for the scoreboard
 fn setup(
     mut commands: Commands,
     board: Res<Board>,
@@ -225,7 +231,7 @@ fn setup(
     commands
         .spawn((Sprite {
             custom_size: Some(Vec2::splat(
-                board.physical_size,
+                board.world_size,
             )),
             color: SLATE_600.into(),
             ..default()
@@ -254,6 +260,8 @@ fn setup(
     next_state.set(RunState::Playing);
 }
 
+/// Spawn a tile in a two random locations to start
+/// the game
 fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
     let mut rng = rand::thread_rng();
     let starting_tiles: Vec<(u16, u16)> =
@@ -266,32 +274,40 @@ fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
     }
 }
 
-// TODO: Find TileText on the right entity
-// then iter_ancestors to find Points
+/// Keep the TileText values up to date with the
+/// Points value. The Points value lives on the root
+/// of the entity so we query for the Text2d we want
+/// to mutate, then iterate up the Parent chain to
+/// find the relevant Points component.
 fn render_tile_points(
     mut texts: Query<
-        &mut Transform,
-        (With<Text2d>, With<TileText>),
+        (Entity, &mut Text2d, &mut Transform),
+        With<TileText>,
     >,
-    mut writer: Text2dWriter,
-    tiles: Query<(&Points, &Children)>,
+    points: Query<&Points>,
+    parents: Query<&Parent>,
 ) {
-    for (points, children) in tiles.iter() {
-        if let Some(entity) = children.first() {
-            let mut transform = texts
-                .get_mut(*entity)
-                .expect("expected Text to exist");
+    for (entity, mut text2d, mut transform) in &mut texts {
+        let Some(points) = parents
+            .iter_ancestors(entity)
+            .find_map(|entity| points.get(entity).ok())
+        else {
+            warn!("A text2d with TileText doesn't have a Points Component in its ancestor tree");
+            continue;
+        };
 
-            *writer.text(*entity, 0) =
-                points.value.to_string();
+        text2d.0 = points.value.to_string();
 
-            *transform = transform.with_scale(Vec3::splat(
-                1.0 / points.value.to_string().len() as f32,
-            ));
-        }
+        // arbitrary size, you could define explicit sizes
+        // or use fancier, faster `points.value.ilog10` to
+        // find the number of digits you need to fit in a tile
+        *transform = transform.with_scale(Vec3::splat(
+            1.0 / points.value.to_string().len() as f32,
+        ));
     }
 }
 
+/// Shift the tiles on the board in a NSEW direction
 fn board_shift(
     board: Res<Board>,
     mut commands: Commands,
@@ -335,7 +351,7 @@ fn board_shift(
                     // merge it with the current
                     // tile.
                     let real_next_tile = it.next()
-                                    .expect("A peeked tile should always exist when we .next here");
+                      .expect("A peeked tile should always exist when we .next here");
                     tile.2.value += real_next_tile.2.value;
 
                     game.score += tile.2.value;
@@ -364,13 +380,17 @@ fn board_shift(
             }
         }
 
+        // spawn a new tile
         commands.trigger(NewTileEvent);
     }
+
+    // update the high score if our current score is higher
     if game.score_best < game.score {
         game.score_best = game.score;
     }
 }
 
+/// Move a tile to its new Position if its Position has changed
 fn render_tiles(
     mut commands: Commands,
     tiles: Query<
@@ -380,20 +400,10 @@ fn render_tiles(
     board: Res<Board>,
 ) {
     for (entity, transform, pos) in tiles.iter() {
-        let x = board.grid_to_world_position(pos.x);
-        let y = board.grid_to_world_position(pos.y);
-
-        // commands.entity(entity).insert(
-        //     Transform::from_xyz(
-        //         x,
-        //         y,
-        //         transform.translation.z,
-        //     ),
-        // );
         commands.entity(entity).insert(transform.ease_to(
             Transform::from_xyz(
-                x,
-                y,
+                board.grid_to_world_position(pos.x),
+                board.grid_to_world_position(pos.y),
                 transform.translation.z,
             ),
             EaseFunction::QuadraticInOut,
@@ -406,6 +416,8 @@ fn render_tiles(
     }
 }
 
+/// Find a single position on an active game board that can
+/// accept a Tile
 fn new_tile_handler(
     _: Trigger<NewTileEvent>,
     mut commands: Commands,
@@ -434,6 +446,8 @@ fn new_tile_handler(
     }
 }
 
+/// A system that detects whether or not the game can continue
+/// if it can't, the game state is set to GameOver
 fn end_game(
     tiles: Query<(&Position, &Points)>,
     mut next_state: ResMut<NextState<RunState>>,
