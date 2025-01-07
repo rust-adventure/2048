@@ -4,7 +4,9 @@ use bevy::{
     ecs::world::Command, math::U16Vec2, prelude::*,
     render::camera::ScalingMode,
 };
-// use bevy_easings::*;
+use bevy_easings::{
+    Ease, EaseFunction, EasingType, EasingsPlugin,
+};
 use itertools::Itertools;
 use rand::prelude::*;
 use std::{
@@ -176,7 +178,7 @@ fn main() {
                 }),
                 ..default()
             }),
-            // EasingsPlugin,
+            EasingsPlugin::default(),
             GameUiPlugin,
         ))
         .init_resource::<Game>()
@@ -381,26 +383,26 @@ fn render_tiles(
         let x = board.grid_to_world_position(pos.x);
         let y = board.grid_to_world_position(pos.y);
 
-        commands.entity(entity).insert(
-            Transform::from_xyz(
-                x,
-                y,
-                transform.translation.z,
-            ),
-        );
-        // commands.entity(entity).insert(transform.ease_to(
+        // commands.entity(entity).insert(
         //     Transform::from_xyz(
         //         x,
         //         y,
         //         transform.translation.z,
         //     ),
-        //     EaseFunction::QuadraticInOut,
-        //     EasingType::Once {
-        //         duration: std::time::Duration::from_millis(
-        //             100,
-        //         ),
-        //     },
-        // ));
+        // );
+        commands.entity(entity).insert(transform.ease_to(
+            Transform::from_xyz(
+                x,
+                y,
+                transform.translation.z,
+            ),
+            EaseFunction::QuadraticInOut,
+            EasingType::Once {
+                duration: std::time::Duration::from_millis(
+                    100,
+                ),
+            },
+        ));
     }
 }
 

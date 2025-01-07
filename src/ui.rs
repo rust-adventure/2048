@@ -1,5 +1,8 @@
 use crate::{Game, RunState};
-use bevy::{color::palettes::tailwind::*, prelude::*};
+use bevy::{
+    color::palettes::tailwind::*,
+    picking::focus::PickingInteraction, prelude::*,
+};
 
 pub struct GameUiPlugin;
 
@@ -209,32 +212,56 @@ fn scoreboard(
 
 fn button_interaction_system(
     mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<Button>),
+        (
+            &PickingInteraction,
+            &mut BackgroundColor,
+        ),
+        (
+            Changed<PickingInteraction>,
+            With<Button>,
+        ),
     >,
     run_state: Res<State<RunState>>,
 ) {
     for (interaction, mut background_color) in
-        interaction_query.iter_mut()
+        &mut interaction_query
     {
         match (interaction, run_state.get()) {
             (_, RunState::Startup) => {}
-            (Interaction::Pressed, RunState::Playing) => {
+            (
+                PickingInteraction::Pressed,
+                RunState::Playing,
+            ) => {
                 *background_color = RED_900.into();
             }
-            (Interaction::Pressed, RunState::GameOver) => {
+            (
+                PickingInteraction::Pressed,
+                RunState::GameOver,
+            ) => {
                 *background_color = BLUE_900.into();
             }
-            (Interaction::Hovered, RunState::Playing) => {
+            (
+                PickingInteraction::Hovered,
+                RunState::Playing,
+            ) => {
                 *background_color = RED_700.into();
             }
-            (Interaction::Hovered, RunState::GameOver) => {
+            (
+                PickingInteraction::Hovered,
+                RunState::GameOver,
+            ) => {
                 *background_color = BLUE_700.into();
             }
-            (Interaction::None, RunState::Playing) => {
+            (
+                PickingInteraction::None,
+                RunState::Playing,
+            ) => {
                 *background_color = RED_800.into();
             }
-            (Interaction::None, RunState::GameOver) => {
+            (
+                PickingInteraction::None,
+                RunState::GameOver,
+            ) => {
                 *background_color = BLUE_800.into();
             }
         }
