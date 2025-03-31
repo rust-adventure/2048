@@ -223,34 +223,36 @@ fn setup(
         Transform::from_xyz(0., 100., 1.),
     ));
 
-    commands
-        .spawn((Sprite {
+    let tiles: Vec<_> = board
+        .tiles()
+        .map(|tile| {
+            (
+                Sprite {
+                    color: SLATE_500.into(),
+                    custom_size: Some(Vec2::splat(
+                        board.tile_size,
+                    )),
+                    ..default()
+                },
+                Transform::from_xyz(
+                    board.grid_to_world_position(tile.0),
+                    board.grid_to_world_position(tile.1),
+                    1.0,
+                ),
+            )
+        })
+        .collect();
+
+    commands.spawn((
+        Sprite {
             custom_size: Some(Vec2::splat(
                 board.world_size,
             )),
             color: SLATE_600.into(),
             ..default()
-        },))
-        .with_children(|builder| {
-            for tile in board.tiles() {
-                builder.spawn((
-                    Sprite {
-                        color: SLATE_500.into(),
-                        custom_size: Some(Vec2::splat(
-                            board.tile_size,
-                        )),
-                        ..default()
-                    },
-                    Transform::from_xyz(
-                        board
-                            .grid_to_world_position(tile.0),
-                        board
-                            .grid_to_world_position(tile.1),
-                        1.0,
-                    ),
-                ));
-            }
-        });
+        },
+        Children::spawn(tiles),
+    ));
 
     next_state.set(RunState::Playing);
 }
@@ -503,44 +505,38 @@ impl Command for SpawnTile {
 
         let font = asset_server.load("Outfit-Black.ttf");
 
-        world
-            .commands()
-            .spawn((
-                Sprite {
-                    color: SLATE_400.into(),
-                    custom_size: Some(Vec2::splat(
-                        board.tile_size,
-                    )),
+        world.commands().spawn((
+            Sprite {
+                color: SLATE_400.into(),
+                custom_size: Some(Vec2::splat(
+                    board.tile_size,
+                )),
+                ..default()
+            },
+            Transform::from_xyz(
+                board.grid_to_world_position(self.pos.x),
+                board.grid_to_world_position(self.pos.y),
+                2.0,
+            ),
+            self.points,
+            self.pos,
+            StateScoped(RunState::GameOver),
+            children![(
+                Text2d("2".to_string()),
+                TextFont {
+                    font,
+                    font_size: 80.,
                     ..default()
                 },
-                Transform::from_xyz(
-                    board
-                        .grid_to_world_position(self.pos.x),
-                    board
-                        .grid_to_world_position(self.pos.y),
-                    2.0,
-                ),
-                self.points,
-                self.pos,
-                StateScoped(RunState::GameOver),
-            ))
-            .with_children(|child_builder| {
-                child_builder.spawn((
-                    Text2d("2".to_string()),
-                    TextFont {
-                        font,
-                        font_size: 80.,
-                        ..default()
-                    },
-                    TextColor(Color::BLACK),
-                    TextLayout {
-                        justify: JustifyText::Center,
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, 0.0, 1.0),
-                    TileText,
-                ));
-            });
+                TextColor(Color::BLACK),
+                TextLayout {
+                    justify: JustifyText::Center,
+                    ..default()
+                },
+                Transform::from_xyz(0.0, 0.0, 1.0),
+                TileText,
+            )],
+        ));
     }
 }
 
