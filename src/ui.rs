@@ -1,7 +1,7 @@
 use crate::{Game, RunState};
 use bevy::{
     color::palettes::tailwind::*,
-    picking::focus::PickingInteraction, prelude::*,
+    picking::hover::PickingInteraction, prelude::*,
 };
 
 pub struct GameUiPlugin;
@@ -143,7 +143,7 @@ fn setup_ui(
                         ..default()
                     },
                     TextColor(SLATE_50.into()),
-                    PickingBehavior::IGNORE,
+                    Pickable::IGNORE,
                 ))
                 .with_child((
                     TextSpan("New Game".to_string()),

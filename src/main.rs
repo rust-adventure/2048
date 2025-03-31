@@ -1,11 +1,7 @@
 use bevy::{
     color::palettes::tailwind::*,
-    dev_tools::states::log_transitions,
-    ecs::world::Command, math::U16Vec2, prelude::*,
-    render::camera::ScalingMode,
-};
-use bevy_easings::{
-    Ease, EaseFunction, EasingType, EasingsPlugin,
+    dev_tools::states::log_transitions, math::U16Vec2,
+    prelude::*, render::camera::ScalingMode,
 };
 use itertools::Itertools;
 use rand::prelude::*;
@@ -178,7 +174,6 @@ fn main() {
                 }),
                 ..default()
             }),
-            EasingsPlugin::default(),
             GameUiPlugin,
         ))
         .init_resource::<Game>()
@@ -219,12 +214,12 @@ fn setup(
 ) {
     commands.spawn((
         Camera2d,
-        OrthographicProjection {
+        Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
                 viewport_height: 600.,
             },
             ..OrthographicProjection::default_2d()
-        },
+        }),
         Transform::from_xyz(0., 100., 1.),
     ));
 
@@ -285,10 +280,10 @@ fn render_tile_points(
         With<TileText>,
     >,
     points: Query<&Points>,
-    parents: Query<&Parent>,
+    entities_with_parents: Query<&ChildOf>,
 ) {
     for (entity, mut text2d, mut transform) in &mut texts {
-        let Some(points) = parents
+        let Some(points) = entities_with_parents
             .iter_ancestors(entity)
             .find_map(|entity| points.get(entity).ok())
         else {
@@ -358,7 +353,7 @@ fn board_shift(
 
                     commands
                         .entity(real_next_tile.0)
-                        .despawn_recursive();
+                        .despawn();
 
                     // if the next, next tile
                     // (tile #3 of 3)
@@ -400,19 +395,13 @@ fn render_tiles(
     board: Res<Board>,
 ) {
     for (entity, transform, pos) in tiles.iter() {
-        commands.entity(entity).insert(transform.ease_to(
+        commands.entity(entity).insert(
             Transform::from_xyz(
                 board.grid_to_world_position(pos.x),
                 board.grid_to_world_position(pos.y),
                 transform.translation.z,
             ),
-            EaseFunction::QuadraticInOut,
-            EasingType::Once {
-                duration: std::time::Duration::from_millis(
-                    100,
-                ),
-            },
-        ));
+        );
     }
 }
 
