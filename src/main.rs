@@ -190,10 +190,7 @@ fn main() {
                 .chain()
                 .run_if(in_state(RunState::Playing)),
         )
-        .add_systems(
-            OnEnter(RunState::Playing),
-            (game_reset, spawn_tiles),
-        )
+        .add_systems(OnEnter(RunState::Playing), game_reset)
         .add_event::<NewTileEvent>()
         .add_observer(new_tile_handler)
         // optional logging to view state transitions
@@ -255,20 +252,6 @@ fn setup(
     ));
 
     next_state.set(RunState::Playing);
-}
-
-/// Spawn a tile in a two random locations to start
-/// the game
-fn spawn_tiles(mut commands: Commands, board: Res<Board>) {
-    let mut rng = rand::thread_rng();
-    let starting_tiles: Vec<(u16, u16)> =
-        board.tiles().choose_multiple(&mut rng, 2);
-    for (x, y) in starting_tiles.into_iter() {
-        commands.queue(SpawnTile {
-            pos: Position(U16Vec2::new(x, y)),
-            points: Points { value: 2 },
-        });
-    }
 }
 
 /// Keep the TileText values up to date with the
@@ -474,8 +457,14 @@ fn end_game(
     }
 }
 
-fn game_reset(mut game: ResMut<Game>) {
+fn game_reset(
+    mut commands: Commands,
+    mut game: ResMut<Game>,
+) {
     game.score = 0;
+
+    commands.trigger(NewTileEvent);
+    commands.trigger(NewTileEvent);
 }
 
 struct SpawnTile {
