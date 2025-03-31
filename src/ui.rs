@@ -275,11 +275,6 @@ fn button_text_system(
     >,
     run_state: Res<State<RunState>>,
 ) {
-    let Ok(mut span) = text_query.get_single_mut() else {
-        error!("Expected a single NewGameButtonText");
-        return;
-    };
-
     let new_text = match run_state.get() {
         RunState::Playing | RunState::Startup => {
             "End Game".to_string()
@@ -287,5 +282,7 @@ fn button_text_system(
         RunState::GameOver => "New Game".to_string(),
     };
 
-    span.0 = new_text;
+    for mut span in &mut text_query {
+        span.0 = new_text.clone();
+    }
 }
