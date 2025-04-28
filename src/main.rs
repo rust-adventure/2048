@@ -272,7 +272,9 @@ fn render_tile_points(
             .iter_ancestors(entity)
             .find_map(|entity| points.get(entity).ok())
         else {
-            warn!("A text2d with TileText doesn't have a Points Component in its ancestor tree");
+            warn!(
+                "A text2d with TileText doesn't have a Points Component in its ancestor tree"
+            );
             continue;
         };
 
@@ -334,6 +336,7 @@ fn board_shift(
                       .expect("A peeked tile should always exist when we .next here");
                     tile.2.value += real_next_tile.2.value;
 
+                    // commands.trigger(ScoreAddEvent(tile.2.value));
                     game.score += tile.2.value;
 
                     commands
@@ -477,7 +480,9 @@ impl Command for SpawnTile {
         let board = {
             let Some(board) = world.get_resource::<Board>()
             else {
-                warn!("SpawnTile command requires a Res<Board> to exist");
+                warn!(
+                    "SpawnTile command requires a Res<Board> to exist"
+                );
                 return;
             };
             board.clone()

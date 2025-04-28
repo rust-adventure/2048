@@ -125,7 +125,7 @@ fn setup_ui(
                     }
                 ),
                 children![(
-                    Text::default(),
+                    Text::new("New Game"),
                     TextFont {
                         font: font.clone(),
                         font_size: 20.0,
@@ -133,10 +133,7 @@ fn setup_ui(
                     },
                     TextColor(SLATE_50.into()),
                     Pickable::IGNORE,
-                    children![(
-                        TextSpan("New Game".to_string()),
-                        NewGameButtonText,
-                    )],
+                    NewGameButtonText,
                 )],
                 NewGameButton,
             )
@@ -170,17 +167,14 @@ fn scorebox(
                 TextColor(Color::WHITE),
             ),
             (
-                Text::default(),
-                children![(
-                    TextSpan("<score>".to_string()),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 25.0,
-                        ..default()
-                    },
-                    TextColor(Color::WHITE),
-                    extra,
-                )],
+                Text::new("<score>"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 25.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                extra,
             )
         ],
     )
@@ -188,9 +182,9 @@ fn scorebox(
 
 fn scoreboard(
     game: Res<Game>,
-    mut scores: Query<&mut TextSpan, With<ScoreDisplay>>,
+    mut scores: Query<&mut Text, With<ScoreDisplay>>,
     mut scores_best: Query<
-        &mut TextSpan,
+        &mut Text,
         (
             With<BestScoreDisplay>,
             Without<ScoreDisplay>,
@@ -266,7 +260,7 @@ fn button_interaction_system(
 
 fn button_text_system(
     mut text_query: Query<
-        &mut TextSpan,
+        &mut Text,
         With<NewGameButtonText>,
     >,
     run_state: Res<State<RunState>>,
