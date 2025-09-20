@@ -1,7 +1,7 @@
 use bevy::{
     color::palettes::tailwind::*,
     dev_tools::states::log_transitions, math::U16Vec2,
-    prelude::*, render::camera::ScalingMode,
+    prelude::*,
 };
 use itertools::Itertools;
 use rand::prelude::*;
@@ -191,11 +191,9 @@ fn main() {
                 .run_if(in_state(RunState::Playing)),
         )
         .add_systems(OnEnter(RunState::Playing), game_reset)
-        .add_event::<NewTileEvent>()
         .add_observer(new_tile_handler)
         // optional logging to view state transitions
         .add_systems(Update, log_transitions::<RunState>)
-        .enable_state_scoped_entities::<RunState>()
         .run();
 }
 
@@ -212,9 +210,10 @@ fn setup(
     commands.spawn((
         Camera2d,
         Projection::Orthographic(OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: 600.,
-            },
+            scaling_mode:
+                bevy::camera::ScalingMode::FixedVertical {
+                    viewport_height: 600.,
+                },
             ..OrthographicProjection::default_2d()
         }),
         Transform::from_xyz(0., 100., 1.),
@@ -336,7 +335,6 @@ fn board_shift(
                       .expect("A peeked tile should always exist when we .next here");
                     tile.2.value += real_next_tile.2.value;
 
-                    // commands.trigger(ScoreAddEvent(tile.2.value));
                     game.score += tile.2.value;
 
                     commands
@@ -396,13 +394,13 @@ fn render_tiles(
 /// Find a single position on an active game board that can
 /// accept a Tile
 fn new_tile_handler(
-    _: Trigger<NewTileEvent>,
+    _: On<NewTileEvent>,
     mut commands: Commands,
     board: Res<Board>,
     tiles: Query<&Position>,
 ) {
     // insert new tile
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let possible_position: Option<Position> = board
         .tiles()
         .filter_map(|tile_pos| {
@@ -514,7 +512,7 @@ impl Command for SpawnTile {
             ),
             self.points,
             self.pos,
-            StateScoped(RunState::GameOver),
+            DespawnOnExit(RunState::GameOver),
             children![(
                 Text2d("2".to_string()),
                 TextFont {
@@ -524,7 +522,7 @@ impl Command for SpawnTile {
                 },
                 TextColor(Color::BLACK),
                 TextLayout {
-                    justify: JustifyText::Center,
+                    justify: Justify::Center,
                     ..default()
                 },
                 Transform::from_xyz(0.0, 0.0, 1.0),
@@ -548,7 +546,7 @@ mod tests {
             MinimalPlugins,
             bevy::state::app::StatesPlugin,
             bevy::asset::AssetPlugin::default(),
-            bevy::render::texture::ImagePlugin::default(),
+            bevy::image::ImagePlugin::default(),
         ))
         .init_asset::<Font>()
         .insert_resource(Board::new(4))

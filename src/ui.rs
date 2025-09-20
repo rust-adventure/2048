@@ -18,7 +18,7 @@ impl Plugin for GameUiPlugin {
                 ),
             )
             .add_observer(
-                |trigger: Trigger<Pointer<Click>>,
+                |click: On<Pointer<Click>>,
                  buttons: Query<
                     (),
                     With<NewGameButton>,
@@ -27,10 +27,7 @@ impl Plugin for GameUiPlugin {
                  mut next_state: ResMut<
                     NextState<RunState>,
                 >| {
-                    if buttons
-                        .get(trigger.target())
-                        .is_err()
-                    {
+                    if buttons.get(click.entity).is_err() {
                         return;
                     };
 
