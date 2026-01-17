@@ -260,13 +260,13 @@ fn setup(
 /// find the relevant Points component.
 fn render_tile_points(
     mut texts: Query<
-        (Entity, &mut Text2d, &mut Transform),
+        (Entity, &mut Text2d, &mut TextFont),
         With<TileText>,
     >,
     points: Query<&Points>,
     entities_with_parents: Query<&ChildOf>,
 ) {
-    for (entity, mut text2d, mut transform) in &mut texts {
+    for (entity, mut text2d, mut text_font) in &mut texts {
         let Some(points) = entities_with_parents
             .iter_ancestors(entity)
             .find_map(|entity| points.get(entity).ok())
@@ -277,14 +277,16 @@ fn render_tile_points(
             continue;
         };
 
+        let points_string = points.value.to_string();
+        let points_length = points_string.len();
         text2d.0 = points.value.to_string();
 
-        // arbitrary size, you could define explicit sizes
-        // or use fancier, faster `points.value.ilog10` to
-        // find the number of digits you need to fit in a tile
-        *transform = transform.with_scale(Vec3::splat(
-            1.0 / points.value.to_string().len() as f32,
-        ));
+        text_font.font_size = match points_length {
+            1 => 40.,
+            2 => 35.,
+            3 => 30.,
+            4 | _ => 25.,
+        };
     }
 }
 

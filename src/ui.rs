@@ -148,11 +148,11 @@ fn scorebox(
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
             justify_content: JustifyContent::Center,
-            min_width: Val::Px(100.),
+            min_width: px(100.),
+            border_radius: BorderRadius::all(px(10.)),
             ..default()
         },
         BackgroundColor(SLATE_600.into()),
-        BorderRadius::all(Val::Px(10.)),
         children![
             (
                 Text(text),
