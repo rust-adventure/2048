@@ -272,7 +272,7 @@ fn render_tile_points(
             .find_map(|entity| points.get(entity).ok())
         else {
             warn!(
-                "A text2d with TileText doesn't have a Points Component in its ancestor tree"
+                "Entity {entity:?} text2d with TileText doesn't have a Points Component in its ancestor tree"
             );
             continue;
         };
